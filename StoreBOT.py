@@ -1,4 +1,5 @@
 import logging
+import sqlite3
 import types
 
 from cart_utils import clear_user_cart, get_cart_items, add_to_cart, remove_from_cart, get_product_quantity
@@ -638,6 +639,7 @@ async def technical_works(message: types.Message):
     await asyncio.sleep(10)
     await msg.delete()
 
+
 @dp.message_handler(commands=["get_user_balance"])
 @auth
 async def user_balans_handler(message: types.Message):
@@ -659,6 +661,12 @@ async def add_deposit_user(message: types.Message):
         await message.delete()
     except aiogram.exceptions.BadRequest:
         pass
+
+
+@dp.message_handler(commands=['checkbalance'])
+@auth
+async def check_user_money_handler(message: types.Message):
+    await check_user_money(message)
 
 
 dp.register_callback_query_handler(process_coupon_inline_callback, lambda query: query.data.startswith("coupon_"),

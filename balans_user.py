@@ -148,3 +148,19 @@ async def add_deposit(message: types.Message):
     await message.delete()
     await asyncio.sleep(5)
     await msg.delete()
+
+
+async def check_user_money(message: types.Message):
+    repl_user_money = message.reply_to_message.from_user.id
+    name_user_reply = message.reply_to_message.from_user.full_name
+    await message.delete()
+    conn = sqlite3.connect('ShopDB.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT money FROM users WHERE user_id=?', (repl_user_money,))
+    money = cursor.fetchone()
+    if money:
+        count_money = money[0]
+        msg = await message.answer(f'Баланс: {name_user_reply}\nKRAFT coins: {count_money}')
+        await asyncio.sleep(10)
+        await msg.delete()
+    conn.close()
