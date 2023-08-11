@@ -87,6 +87,22 @@ async def process_enter_coupon(message: types.Message, state: FSMContext):
 
         total_price1 = total_price + delivery_value
 
+        if delivery_method == "Экспресс":
+            delivery = "‼️Экспресс: 1200р.‼️"
+            delivery_value = 1200
+
+        elif delivery_method == "Экспресс + страховка":
+            delivery = "‼️Экспресс + ✅страховка✅: 1300р.‼️"
+            delivery_value = 1300
+
+        elif delivery_method == "Обычная":
+            delivery_value = 600
+            delivery = "Обычная: 600р."
+
+        elif delivery_method == "Обычная + страховка":
+            delivery_value = 700
+            delivery = "Обычная + ✅страховка✅: 700р."
+
         cart_text += (
             f"\nПодытог: {total_price} руб. + {delivery} >> Итого = {total_price1} руб."
         )
@@ -189,8 +205,6 @@ async def process_coupon_inline_callback(query: types.CallbackQuery, state: FSMC
 
             cart_data = calc_money_cart(money_value, total_price1, user_id)
             total_price1 -= money_value
-
-
 
             if total_price1 <= 0:
                 total_price1 = "❗️ОПЛАЧЕНО❗️"

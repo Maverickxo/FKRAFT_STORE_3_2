@@ -42,7 +42,9 @@ async def weekend_coupons(message: types.Message):
             # discount_percentage = coupon[2]
             coupon_code = coupon[1]
             response += f"Код купона: `{coupon_code}`\n"
-        await message.answer(response + '*\nКоманда для проверки купона: /ck_coupon\nС уважением, Администрация!*', parse_mode='markdown')
+
+        await message.answer(response + '*\nКоманда для проверки купона: /ck_coupon\n'
+                                        'С уважением, Администрация!*', parse_mode='markdown')
 
     else:
         await message.answer("Нет доступных купонов")

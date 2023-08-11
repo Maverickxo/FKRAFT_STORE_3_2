@@ -15,7 +15,7 @@ async def set_money_to_zero(user_id):
     cursor = conn.cursor()
 
     try:
-        # Выполним запрос на обновление баланса пользователя.
+        # запрос на обновление баланса пользователя. Списываем в ноль
         cursor.execute("UPDATE users SET money=0 WHERE user_id=?", (user_id,))
         conn.commit()
         return True
@@ -151,16 +151,22 @@ async def add_deposit(message: types.Message):
 
 
 async def check_user_money(message: types.Message):
-    repl_user_money = message.reply_to_message.from_user.id
-    name_user_reply = message.reply_to_message.from_user.full_name
     await message.delete()
-    conn = sqlite3.connect('ShopDB.db')
-    cursor = conn.cursor()
-    cursor.execute('SELECT money FROM users WHERE user_id=?', (repl_user_money,))
-    money = cursor.fetchone()
-    if money:
-        count_money = money[0]
-        msg = await message.answer(f'Баланс: {name_user_reply}\nKRAFT coins: {count_money}')
+    if message.reply_to_message and message.reply_to_message.from_user:
+        await message.delete()
+        repl_user_money = message.reply_to_message.from_user.id
+        name_user_reply = message.reply_to_message.from_user.full_name
+        conn = sqlite3.connect('ShopDB.db')
+        cursor = conn.cursor()
+        cursor.execute('SELECT money FROM users WHERE user_id=?', (repl_user_money,))
+        money = cursor.fetchone()
+        if money:
+            count_money = money[0]
+            msg = await message.answer(f'Баланс: {name_user_reply}\nKRAFT coins: {count_money}')
+            await asyncio.sleep(10)
+            await msg.delete()
+        conn.close()
+    else:
+        msg = await message.answer("Команда ответом на сообщение нужного юзера")
         await asyncio.sleep(10)
         await msg.delete()
-    conn.close()
