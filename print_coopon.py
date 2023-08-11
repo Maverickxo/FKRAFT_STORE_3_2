@@ -36,14 +36,14 @@ async def weekend_coupons(message: types.Message):
 
     if all_results:
         random_coupons = random.sample(all_results, min(8, len(all_results)))
-        response = f"Случайные купоны:\n(обновлены {datetime.datetime.now().strftime('%d.%m.%Y')})\n`{COUPON_TEXT}`"
+        response = f"Случайные купоны:\n(обновлены {datetime.datetime.now().strftime('%d.%m.%Y')})\n{COUPON_TEXT}"
 
         for coupon in random_coupons:
             # discount_percentage = coupon[2]
             coupon_code = coupon[1]
             response += f"Код купона: `{coupon_code}`\n"
+        await message.answer(response + '*\nКоманда для проверки купона: /ck_coupon\nС уважением, Администрация!*', parse_mode='markdown')
 
-        await message.answer(response + '\nС уважением, Администрация!', parse_mode='markdown')
     else:
         await message.answer("Нет доступных купонов")
 
