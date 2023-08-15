@@ -22,7 +22,7 @@ status = [
 
 
 async def wtite_user_last_time(user_id, current_date):
-    conn = sqlite3.connect('dice_db.db')
+    conn = sqlite3.connect('ShopDB.db')
     cursor = conn.cursor()
     cursor.execute('INSERT OR REPLACE INTO dice_rolls (user_id, last_roll_date) VALUES (?, ?)',
                    (user_id, current_date))
@@ -30,7 +30,7 @@ async def wtite_user_last_time(user_id, current_date):
 
 
 async def can_throw_dice(user_id):
-    conn = sqlite3.connect('dice_db.db')
+    conn = sqlite3.connect('ShopDB.db')
     cursor = conn.cursor()
     current_date = datetime.datetime.now().date()
 
@@ -49,7 +49,7 @@ async def can_throw_dice(user_id):
 
 
 async def get_user_coupons(message: types.Message):
-    conn = sqlite3.connect('C:\PYTHON_PJ\KRAFT_STROE_3_0\ShopDB.db')
+    conn = sqlite3.connect('ShopDB.db')
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM coupons WHERE discount_percentage = 5 ORDER BY RANDOM() LIMIT 5")
     results_5_percent = cursor.fetchall()
@@ -98,7 +98,7 @@ async def send_dice(message: types.Message):
             await asyncio.sleep(30)
             await msg.delete()
         else:
-            # await wtite_user_last_time(user_id, current_date)
+            await wtite_user_last_time(user_id, current_date)
             game_info = status[game_over - 1][game_over]
             await asyncio.sleep(3.70)
             msg = await message.answer(f"{game_info}\nВы проиграли!")
