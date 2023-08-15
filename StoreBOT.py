@@ -28,6 +28,7 @@ from change_price import *
 from change_status import *
 from del_price import del_price, delete_product
 from cart_calculator import process_enter_coupon, process_coupon_inline_callback
+from dice_rol import send_dice
 
 bot = Bot(token=config.TOKEN)
 dp = Dispatcher(bot, storage=MemoryStorage())
@@ -668,12 +669,13 @@ async def add_deposit_user(message: types.Message):
 async def check_user_money_handler(message: types.Message):
     await check_user_money(message)
 
-from dice_rol import send_dice
+
 @dp.message_handler(commands=['dice'])
 @aut_cgt()
 @check_ban_status
 async def dice_rol_handler(message: types.Message):
     await send_dice(message)
+
 
 dp.register_callback_query_handler(process_coupon_inline_callback, lambda query: query.data.startswith("coupon_"),
                                    state=OrderForm.COUPON)
