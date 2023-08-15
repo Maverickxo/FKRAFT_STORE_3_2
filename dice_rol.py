@@ -79,33 +79,35 @@ async def send_dice(message: types.Message):
     await message.delete()
     current_date = datetime.datetime.now().date()
     user_id = message.from_user.id
+    try:
+        if await can_throw_dice(user_id):
+            bot_data1 = await bot.send_dice(user_id)
+            dice_value1 = bot_data1.dice.value
+            bot_data2 = await bot.send_dice(user_id)
+            dice_value2 = bot_data2.dice.value
+            game_over = dice_value1 + dice_value2
+            print(f"Сумма: {game_over}")
 
-    if await can_throw_dice(user_id):
-        bot_data1 = await bot.send_dice(user_id)
-        dice_value1 = bot_data1.dice.value
-        bot_data2 = await bot.send_dice(user_id)
-        dice_value2 = bot_data2.dice.value
-        game_over = dice_value1 + dice_value2
-        print(f"Сумма: {game_over}")
+            if game_over == 12:
+                await wtite_user_last_time(user_id, current_date)
+                await asyncio.sleep(3.70)
+                game_info = status[game_over - 1][game_over]
+                msg = await message.answer(f"Победа {game_info}")
 
-        if game_over == 12:
-            await wtite_user_last_time(user_id, current_date)
-            await asyncio.sleep(3.70)
-            game_info = status[game_over - 1][game_over]
-            msg = await message.answer(f"Победа {game_info}")
+                await get_user_coupons(message)
+                await asyncio.sleep(30)
+                await msg.delete()
+            else:
+                await wtite_user_last_time(user_id, current_date)
+                game_info = status[game_over - 1][game_over]
+                await asyncio.sleep(3.70)
+                msg = await message.answer(f"{game_info}\nВы проиграли!")
+                await asyncio.sleep(30)
+                await msg.delete()
 
-            await get_user_coupons(message)
-            await asyncio.sleep(30)
-            await msg.delete()
         else:
-            await wtite_user_last_time(user_id, current_date)
-            game_info = status[game_over - 1][game_over]
-            await asyncio.sleep(3.70)
-            msg = await message.answer(f"{game_info}\nВы проиграли!")
+            msg = await message.answer("Вы уже бросили кубики сегодня. Попробуйте завтра!")
             await asyncio.sleep(30)
             await msg.delete()
-
-    else:
-        msg = await message.answer("Вы уже бросили кубики сегодня. Попробуйте завтра!")
-        await asyncio.sleep(30)
-        await msg.delete()
+    except:
+        pass
