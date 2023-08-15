@@ -2,7 +2,7 @@ import random
 import asyncio
 import datetime
 import sqlite3
-from aiogram import Bot, Dispatcher, types
+from aiogram import types
 from StoreBOT import bot
 
 status = [
