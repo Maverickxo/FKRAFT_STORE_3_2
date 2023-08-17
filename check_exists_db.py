@@ -31,7 +31,9 @@
 #
 #         conn.execute('''CREATE TABLE IF NOT EXISTS dice_rolls(
 #                           user_id INTEGER PRIMARY KEY,
-#                           last_roll_date TEXT
+#                           last_roll_date TEXT,
+#                           "user_name"	TEXT,
+#                           "full_name"	TEXT
 #                           )''')
 
 

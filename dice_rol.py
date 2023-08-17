@@ -21,11 +21,12 @@ status = [
 ]
 
 
-async def wtite_user_last_time(user_id, current_date):
+async def wtite_user_last_time(user_id, current_date, user_name, full_name):
     conn = sqlite3.connect('ShopDB.db')
     cursor = conn.cursor()
-    cursor.execute('INSERT OR REPLACE INTO dice_rolls (user_id, last_roll_date) VALUES (?, ?)',
-                   (user_id, current_date))
+    cursor.execute(
+        'INSERT OR REPLACE INTO dice_rolls (user_id, last_roll_date, user_name, full_name) VALUES (?, ?, ?, ?)',
+        (user_id, current_date, user_name, full_name))
     conn.commit()
 
 
@@ -79,6 +80,8 @@ async def send_dice(message: types.Message):
     await message.delete()
     current_date = datetime.datetime.now().date()
     user_id = message.from_user.id
+    user_name = message.from_user.mention
+    full_name = message.from_user.full_name
     try:
         if await can_throw_dice(user_id):
             bot_data1 = await bot.send_dice(user_id)
@@ -89,7 +92,7 @@ async def send_dice(message: types.Message):
             print(f"Сумма: {game_over}")
 
             if game_over == 12:
-                await wtite_user_last_time(user_id, current_date)
+                await wtite_user_last_time(user_id, current_date, user_name, full_name)
                 await asyncio.sleep(3.70)
                 game_info = status[game_over - 1][game_over]
                 msg = await message.answer(f"Победа {game_info}")
@@ -98,7 +101,7 @@ async def send_dice(message: types.Message):
                 await asyncio.sleep(30)
                 await msg.delete()
             else:
-                await wtite_user_last_time(user_id, current_date)
+                await wtite_user_last_time(user_id, current_date, user_name, full_name)
                 game_info = status[game_over - 1][game_over]
                 await asyncio.sleep(3.70)
                 msg = await message.answer(f"{game_info}\nВы проиграли!")
