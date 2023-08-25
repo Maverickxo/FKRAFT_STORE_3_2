@@ -676,6 +676,7 @@ async def dice_rol_handler(message: types.Message):
 
 
 @dp.message_handler(commands=['dice_list'])
+@auth
 async def print_dice_rol_handler(message: types.Message):
     await count_user_dice_data(message)
 

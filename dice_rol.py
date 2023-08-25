@@ -202,6 +202,7 @@ async def send_dice(message: types.Message):
         except:
             pass
 
+
 # /dice_list
 async def print_list_user_dice(data, data1, message: types.Message):
     await message.delete()
