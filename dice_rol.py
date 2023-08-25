@@ -17,17 +17,67 @@ status = [
     {9: 'Девятка! Ты почти на вершине чемпион'},
     {10: 'Десятка! Время перестать играть в прятки с удачей'},
     {11: 'Одиннадцать! Вот это да, счастье нашло тебя, но нет..'},
-    {12: 'Двенадцать! Невероятная удача, поздравляю!'}
+    {12: 'Двенадцать! Невероятная удача, поздравляю!\nКупон отправлен в личку! '}
 ]
 
 
-async def wtite_user_last_time(user_id, current_date, user_name, full_name):
+async def user_count_dice_win_and_alldice(user_id):
     conn = sqlite3.connect('ShopDB.db')
     cursor = conn.cursor()
-    cursor.execute(
-        'INSERT OR REPLACE INTO dice_rolls (user_id, last_roll_date, user_name, full_name) VALUES (?, ?, ?, ?)',
-        (user_id, current_date, user_name, full_name))
+    cursor.execute('SELECT count_dice, count_win FROM dice_rolls WHERE user_id = ?', (user_id,))
+    user_data = cursor.fetchone()
+    all_count = user_data[0]
+    win_count = user_data[1]
+    return all_count, win_count
+
+
+async def write_user_last_time(user_id, current_date, user_name, full_name):
+    conn = sqlite3.connect('ShopDB.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT user_id FROM dice_rolls WHERE user_id = ?', (user_id,))
+    existing_user = cursor.fetchone()
+    if existing_user:
+        cursor.execute(
+            'UPDATE dice_rolls SET last_roll_date = ?, user_name = ?, full_name = ? WHERE user_id = ?',
+            (current_date, user_name, full_name, user_id))
+    else:
+        cursor.execute(
+            'INSERT INTO dice_rolls (user_id, last_roll_date, user_name, full_name) VALUES (?, ?, ?, ?)',
+            (user_id, current_date, user_name, full_name))
     conn.commit()
+    conn.close()
+
+
+async def increment_user_count_dice(user_id):
+    conn = sqlite3.connect('ShopDB.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT count_dice FROM dice_rolls WHERE user_id = ?', (user_id,))
+    result = cursor.fetchone()
+
+    if result is not None:
+        current_count = result[0]
+        new_count = current_count + 1
+        cursor.execute('UPDATE dice_rolls SET count_dice = ? WHERE user_id = ?', (new_count, user_id))
+        print(new_count)
+        conn.commit()
+    else:
+        print(f"[Пользователь с user_id {user_id} не найден.]")
+    conn.close()
+
+
+async def increment_user_count_win(user_id):
+    conn = sqlite3.connect('ShopDB.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT count_win FROM dice_rolls WHERE user_id = ?', (user_id,))
+    result = cursor.fetchone()
+    if result is not None:
+        current_count = result[0]
+        new_count = current_count + 1
+        cursor.execute('UPDATE dice_rolls SET count_win = ? WHERE user_id = ?', (new_count, user_id))
+        conn.commit()
+    else:
+        print(f"Пользователь с user_id {user_id} не найден.")
+    conn.close()
 
 
 async def can_throw_dice(user_id):
@@ -50,6 +100,7 @@ async def can_throw_dice(user_id):
 
 
 async def get_user_coupons(message: types.Message):
+    user_id = message.from_user.id
     conn = sqlite3.connect('ShopDB.db')
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM coupons WHERE discount_percentage = 5 ORDER BY RANDOM() LIMIT 5")
@@ -66,9 +117,8 @@ async def get_user_coupons(message: types.Message):
         for coupon in random_coupons:
             coupon_code = coupon[1]
             response += f"Код купона: `{coupon_code}`\n"
-
-        await message.answer(response + '*\nКоманда для проверки купона: /ck_coupon\n*'
-                             , parse_mode='markdown')
+        await bot.send_message(user_id, response + '*\nКоманда для проверки купона: /ck_coupon\n*'
+                               , parse_mode='markdown')
 
     else:
         await message.answer("Нет доступных купонов")
@@ -82,35 +132,52 @@ async def send_dice(message: types.Message):
     user_id = message.from_user.id
     user_name = message.from_user.mention
     full_name = message.from_user.full_name
-    try:
-        if await can_throw_dice(user_id):
-            bot_data1 = await bot.send_dice(user_id)
-            dice_value1 = bot_data1.dice.value
-            bot_data2 = await bot.send_dice(user_id)
-            dice_value2 = bot_data2.dice.value
-            game_over = dice_value1 + dice_value2
-            print(f"Сумма: {game_over}")
+    if user_id == 405223969:
+        with open("krit.png", 'rb') as photo_file:
+            await message.answer_photo(photo_file)
 
-            if game_over == 12:
-                await wtite_user_last_time(user_id, current_date, user_name, full_name)
-                await asyncio.sleep(3.70)
-                game_info = status[game_over - 1][game_over]
-                msg = await message.answer(f"Победа {game_info}")
+    else:
+        try:
+            if await can_throw_dice(user_id):
+                bot_data1 = await message.answer_dice()
+                dice_value1 = bot_data1.dice.value
+                bot_data2 = await message.answer_dice()
+                dice_value2 = bot_data2.dice.value
+                game_over = dice_value1 + dice_value2
+                print(f"Сумма: {game_over}")
+                await increment_user_count_dice(user_id)
 
-                await get_user_coupons(message)
-                await asyncio.sleep(30)
-                await msg.delete()
+                if game_over == 12:
+                    await write_user_last_time(user_id, current_date, user_name, full_name)
+                    await asyncio.sleep(3.70)
+                    game_info = status[game_over - 1][game_over]
+                    all_count, win_count = await user_count_dice_win_and_alldice(user_id)
+
+                    msg = await message.answer(
+                        f"{full_name}\n\nПобеда {game_info}\n\nВсего бросков: {all_count}\nВыигрышных бросков: {win_count}")
+
+                    await increment_user_count_win(user_id)
+                    await get_user_coupons(message)
+                    # await asyncio.sleep(30)
+                    # await msg.delete()
+                else:
+
+                    await write_user_last_time(user_id, current_date, user_name, full_name)
+                    game_info = status[game_over - 1][game_over]
+                    await asyncio.sleep(3.70)
+
+                    all_count, win_count = await user_count_dice_win_and_alldice(user_id)
+                    msg = await message.answer(
+                        f"{full_name}\n\n{game_info}\nВы проиграли!\n\nВсего бросков: {all_count}\nВыигрышных бросков: {win_count}")
+
+                    await asyncio.sleep(30)
+                    await bot_data1.delete()
+                    await bot_data2.delete()
+                    await msg.delete()
+
             else:
-                await wtite_user_last_time(user_id, current_date, user_name, full_name)
-                game_info = status[game_over - 1][game_over]
-                await asyncio.sleep(3.70)
-                msg = await message.answer(f"{game_info}\nВы проиграли!")
-                await asyncio.sleep(30)
+                msg = await message.answer("Вы уже бросили кубики сегодня. Попробуйте завтра!")
+                await asyncio.sleep(10)
                 await msg.delete()
-
-        else:
-            msg = await message.answer("Вы уже бросили кубики сегодня. Попробуйте завтра!")
-            await asyncio.sleep(30)
-            await msg.delete()
-    except:
-        pass
+        except:
+            pass
