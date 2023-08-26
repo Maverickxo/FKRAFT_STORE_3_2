@@ -113,20 +113,23 @@ async def process_enter_coupon(message: types.Message, state: FSMContext):
         total_amount1 -= money_value
 
         random_number = random.choice(numbers_cards)
+        digits = random_number[:19]
+        remaining_text = random_number[20:]
+
         if total_amount1 <= 0:
             total_amount1 = "❗️ОПЛАЧЕНО❗️"
         await bot.send_message(
             user_id,
             f"{cart_text}\n\n"
             "Информация о заказе:\n"
-            "********************\n"
+            "\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\n"
             f"Дата заказа: {formatted_datetime}\n"
             f"ФИО: {data['fio']}\n"
             f"Индекс: {data['index']}\n"
             f"Город: {data['city']}\n"
             f"Улица: {data['street']}\n"
             f"Номер дома и квартиры: {data['house']}\n"
-            "********************\n\n"
+            "\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\n\n"
             f"После применения купона : {total_amount} руб.\n"
             f"Сумма скидки: {discount_amount} руб.\n"
             f"Процент скидки: {discount_percentage} %.\n"
@@ -134,10 +137,10 @@ async def process_enter_coupon(message: types.Message, state: FSMContext):
             f"{cart_data}\n"
             "Реквизиты для оплаты:\n"
             "--------------------------------------------\n"
-            f"{random_number}\n"
+            f"`{digits}` {remaining_text}\n"
             "--------------------------------------------\n"
-            f"Сумма к оплате: {total_amount1} руб.\n",
-        )
+            f"Сумма к оплате: {total_amount1} руб.\n", parse_mode='markdown')
+
         await alert_hd(message)
         clear_user_cart(user_id)
         # await bot.send_message(-1001683359105, f"Оформлен заказ №{random_number_order}\n"
@@ -202,6 +205,8 @@ async def process_coupon_inline_callback(query: types.CallbackQuery, state: FSMC
                 cart_text += f"\nПодытог: {total_price} руб. + {delivery} >> Итого = {total_price1} руб."
 
             random_number = random.choice(numbers_cards)
+            digits = random_number[:19]
+            remaining_text = random_number[20:]
 
             cart_data = calc_money_cart(money_value, total_price1, user_id)
             total_price1 -= money_value
@@ -212,21 +217,20 @@ async def process_coupon_inline_callback(query: types.CallbackQuery, state: FSMC
                 user_id,
                 f"{cart_text}\n\n"
                 f"Информация о заказе:\n"
-                "********************\n"
+                "\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\n"
                 f"Дата заказа: {formatted_datetime}\n"
                 f"ФИО: {data['fio']}\n"
                 f"Индекс: {data['index']}\n"
                 f"Город: {data['city']}\n"
                 f"Улица: {data['street']}\n"
                 f"Номер дома и квартиры: {data['house']}\n"
-                "********************\n\n"
+                "\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\n\n"
                 f"{cart_data}\n"
                 f"Реквизиты для оплаты:\n"
                 "--------------------------------------------\n"
-                f"{random_number}\n"
+                f"`{digits}` {remaining_text}\n"
                 "--------------------------------------------\n"
-                f"Сумма к оплате: {total_price1} руб.\n",
-            )
+                f"Сумма к оплате: {total_price1} руб.\n", parse_mode='markdown')
 
             await alert_hd(query.message)
             clear_user_cart(user_id)
