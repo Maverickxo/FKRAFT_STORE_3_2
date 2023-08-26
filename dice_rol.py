@@ -5,6 +5,8 @@ import sqlite3
 from aiogram import types
 from StoreBOT import bot
 
+users = []
+
 status = [
     {1: 'Один! Похоже, ты потратил весь фарт на сегодня'},
     {2: 'Два! Попробуй в другой раз'},
@@ -19,6 +21,24 @@ status = [
     {11: 'Одиннадцать! Вот это да, счастье нашло тебя, но нет..'},
     {12: 'Двенадцать! Невероятная удача, поздравляю!\nКупон отправлен в личку! '}
 ]
+
+
+async def count_user_dice_data(message):
+    date = datetime.date.today()
+    formatted_date = date.strftime("%Y-%m-%d")
+    conn = sqlite3.connect('ShopDB.db')
+    curs = conn.cursor()
+    curs.execute(f"SELECT last_roll_date, full_name FROM dice_rolls WHERE last_roll_date = '{formatted_date}' ")
+    data1 = curs.fetchall()
+    await count_user_win(data1, message)
+
+
+async def count_user_win(data1, message):
+    conn = sqlite3.connect('ShopDB.db')
+    curs = conn.cursor()
+    curs.execute("SELECT full_name, count_win FROM dice_rolls WHERE count_win = '1'")
+    data = curs.fetchall()
+    await print_list_user_dice(data, data1, message)
 
 
 async def user_count_dice_win_and_alldice(user_id):
@@ -181,3 +201,32 @@ async def send_dice(message: types.Message):
                 await msg.delete()
         except:
             pass
+
+# /dice_list
+async def print_list_user_dice(data, data1, message: types.Message):
+    await message.delete()
+    users_data = ""
+    cont = 0
+    users_data += f"Список пользователей получивших купон :\n\n"
+    for x in data:
+        if x[1] >= 1:
+            cont += 1
+            users.append([x[0], x[1]])
+
+    for user in users:
+        users_data += f"{user[0]} - {user[1]} .шт\n"
+    users_data += f'\nВсего пользователей: {cont} \n\n'
+    if cont == 0:
+        users_data += "нет пользователей\n"
+    if data1:
+        users_data += "Сегодня кидали кубы:\n"
+        for x in data1:
+            users.append([x[0], x[1]])
+            users_data += f"{x[0]} {x[1]}\n"
+    else:
+        users_data += "Сегодня никто не кидал кубы\n"
+    print(users_data)
+    msg = await message.answer(users_data)
+    users.clear()
+    await asyncio.sleep(20)
+    await msg.delete()
