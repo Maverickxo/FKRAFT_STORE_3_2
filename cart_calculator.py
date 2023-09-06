@@ -5,11 +5,19 @@ from allert_info import *
 from add_price import *
 from change_price import *
 from change_status import *
-import datetime
+
 from user_money_to_cart import calc_money_cart
+from datetime import datetime, timedelta
 
 conn = sqlite3.connect("ShopDB.db")
 cursor = conn.cursor()
+
+
+def get_dt():
+    current_dt = datetime.now()
+    new_dt = current_dt + timedelta(hours=-1)
+    format_dt = new_dt.strftime("%d-%m-%Y %H:%M:%S")
+    return format_dt
 
 
 class OrderForm(StatesGroup):
@@ -19,8 +27,7 @@ class OrderForm(StatesGroup):
 async def process_enter_coupon(message: types.Message, state: FSMContext):
     coupon = message.text
     chat_id = message.chat.id
-    current_datetime = datetime.datetime.now()
-    formatted_datetime = current_datetime.strftime("%Y-%m-%d %H:%M:%S")
+    formatted_datetime = get_dt()
     async with state.proxy() as data:
         money_value = data.get("money_value", 0)  # Получаем значение money_value из данных состояния.
         delivery_method = data["delivery_method"]
@@ -123,7 +130,7 @@ async def process_enter_coupon(message: types.Message, state: FSMContext):
             f"{cart_text}\n\n"
             "Информация о заказе:\n"
             "\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\n"
-            f"Дата заказа: {formatted_datetime}\n"
+            f"Дата заказа: {formatted_datetime}(MSK)\n"
             f"ФИО: {data['fio']}\n"
             f"Индекс: {data['index']}\n"
             f"Город: {data['city']}\n"
@@ -150,8 +157,7 @@ async def process_enter_coupon(message: types.Message, state: FSMContext):
 
 
 async def process_coupon_inline_callback(query: types.CallbackQuery, state: FSMContext):
-    current_datetime = datetime.datetime.now()
-    formatted_datetime = current_datetime.strftime("%Y-%m-%d %H:%M:%S")
+    formatted_datetime = get_dt()
     chat_id = query.message.chat.id
     callback_data = query.data
     if callback_data == "coupon_yes":
@@ -218,7 +224,7 @@ async def process_coupon_inline_callback(query: types.CallbackQuery, state: FSMC
                 f"{cart_text}\n\n"
                 f"Информация о заказе:\n"
                 "\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\n"
-                f"Дата заказа: {formatted_datetime}\n"
+                f"Дата заказа: {formatted_datetime}(MSK)\n"
                 f"ФИО: {data['fio']}\n"
                 f"Индекс: {data['index']}\n"
                 f"Город: {data['city']}\n"

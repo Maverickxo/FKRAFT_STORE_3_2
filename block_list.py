@@ -20,7 +20,7 @@ async def usr_count_ban(message: types.Message):
             count += 1
         ban_list_str = "\n".join(ban_list)
         msg = await message.answer(f"Бан лист:\n{ban_list_str}", parse_mode='Markdown')
-    await asyncio.sleep(5)
+    await asyncio.sleep(50)
     await message.delete()
     await msg.delete()
 
