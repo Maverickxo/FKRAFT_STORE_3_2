@@ -6,6 +6,8 @@ from add_price import *
 from change_price import *
 from change_status import *
 
+from aiogram import types
+
 from user_money_to_cart import calc_money_cart
 from datetime import datetime, timedelta
 
@@ -15,9 +17,16 @@ cursor = conn.cursor()
 
 def get_dt():
     current_dt = datetime.now()
-    new_dt = current_dt + timedelta(hours=-1)
+    new_dt = current_dt + timedelta(hours=3)
     format_dt = new_dt.strftime("%d-%m-%Y %H:%M:%S")
     return format_dt
+
+
+async def order_informer(random_number_order, total_price1, delivery, order_user):
+    await bot.send_message(-1001683359105, f"Оформлен заказ №{random_number_order}\n"
+                                           f"Сумма к оплате: {total_price1} руб.\n"
+                                           f"Отправка: {delivery}\n\n"
+                                           f"Клиент: {order_user}")
 
 
 class OrderForm(StatesGroup):
@@ -25,6 +34,7 @@ class OrderForm(StatesGroup):
 
 
 async def process_enter_coupon(message: types.Message, state: FSMContext):
+    order_user = message.from_user.full_name
     coupon = message.text
     chat_id = message.chat.id
     formatted_datetime = get_dt()
@@ -53,8 +63,6 @@ async def process_enter_coupon(message: types.Message, state: FSMContext):
 
                 discount_amount = int(total_price * (discount_percentage / 100))
                 total_amount = int(total_price - discount_amount)
-                # discount_amount = int(discount_amount)#
-                # total_amount = int(total_amount)#
 
                 if result[3] == 0:
                     cursor.execute("DELETE FROM coupons WHERE coupon_code = ?", (coupon,))
@@ -150,13 +158,13 @@ async def process_enter_coupon(message: types.Message, state: FSMContext):
 
         await alert_hd(message)
         clear_user_cart(user_id)
-        # await bot.send_message(-1001683359105, f"Оформлен заказ №{random_number_order}\n"
-        #                                        f"Сумма к оплате: {total_price1} руб.\n"
-        #                                        f"Отправка:{delivery}")
+
+        await order_informer(random_number_order, total_price1, delivery, order_user)
     await state.finish()
 
 
 async def process_coupon_inline_callback(query: types.CallbackQuery, state: FSMContext):
+    order_user = query.from_user.full_name
     formatted_datetime = get_dt()
     chat_id = query.message.chat.id
     callback_data = query.data
@@ -240,7 +248,6 @@ async def process_coupon_inline_callback(query: types.CallbackQuery, state: FSMC
 
             await alert_hd(query.message)
             clear_user_cart(user_id)
-            # await bot.send_message(-1001683359105, f"Оформлен заказ №{random_number_order}\n"
-            #                                        f"Сумма к оплате: {total_price1} руб.\n"
-            #                                        f"Отправка:{delivery}")
+            await order_informer(random_number_order, total_price1, delivery, order_user)
+
         await state.finish()
