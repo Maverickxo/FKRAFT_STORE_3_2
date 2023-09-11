@@ -125,9 +125,9 @@ COUPON_TEXT = """
 """
 
 INFO = """
-🛍️ *KRAFT STORE BOT - версия 3.4.2915* 🛍️
+🛍️ *KRAFT STORE BOT - версия 3.4.2511* 🛍️
 
-    [rel: Дата: 26.08.2023]\n
+    [rel: Дата: 11.09.2023]\n
     [feedback](https://t.me/Maver1ckxo) : @Maver1ckxo\n
 
 """
