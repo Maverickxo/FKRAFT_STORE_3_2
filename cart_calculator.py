@@ -22,10 +22,11 @@ def get_dt():
     return format_dt
 
 
-async def order_informer(random_number_order, total_price1, delivery, order_user):
+async def order_informer(random_number_order, total_price1, delivery, coupon, order_user):
     await bot.send_message(-1001683359105, f"Оформлен заказ №{random_number_order}\n"
                                            f"Сумма к оплате: {total_price1} руб.\n"
-                                           f"Отправка: {delivery}\n\n"
+                                           f"Отправка: {delivery}\n"
+                                           f"Купон: {coupon}\n\n"
                                            f"Клиент: {order_user}")
 
 
@@ -155,11 +156,11 @@ async def process_enter_coupon(message: types.Message, state: FSMContext):
             f"`{digits}` {remaining_text}\n"
             "--------------------------------------------\n"
             f"Сумма к оплате: {total_amount1} руб.\n", parse_mode='markdown')
-
+        coupon = f"{coupon} - {discount_percentage}%"
         await alert_hd(message)
         clear_user_cart(user_id)
 
-        await order_informer(random_number_order, total_price1, delivery, order_user)
+        await order_informer(random_number_order, total_price1, delivery, coupon, order_user)
     await state.finish()
 
 
@@ -245,9 +246,8 @@ async def process_coupon_inline_callback(query: types.CallbackQuery, state: FSMC
                 f"`{digits}` {remaining_text}\n"
                 "--------------------------------------------\n"
                 f"Сумма к оплате: {total_price1} руб.\n", parse_mode='markdown')
-
+            coupon = "Без купона"
             await alert_hd(query.message)
             clear_user_cart(user_id)
-            await order_informer(random_number_order, total_price1, delivery, order_user)
-
+            await order_informer(random_number_order, total_price1, delivery, coupon, order_user)
         await state.finish()

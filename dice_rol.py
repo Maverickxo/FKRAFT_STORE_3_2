@@ -36,7 +36,7 @@ async def count_user_dice_data(message):
 async def count_user_win(data1, message):
     conn = sqlite3.connect('ShopDB.db')
     curs = conn.cursor()
-    curs.execute("SELECT full_name, count_win FROM dice_rolls WHERE count_win = '1'")
+    curs.execute("SELECT full_name, count_win FROM dice_rolls WHERE count_win >= 1")
     data = curs.fetchall()
     await print_list_user_dice(data, data1, message)
 
@@ -154,7 +154,7 @@ async def send_dice(message: types.Message):
     full_name = message.from_user.full_name
     if user_id == 405223969:
         with open("krit.png", 'rb') as photo_file:
-            await message.answer_photo(photo_file)
+            await message.answer_photo(photo_file, caption=f'Поздравим победителя {full_name}')
 
     else:
         try:
@@ -187,8 +187,12 @@ async def send_dice(message: types.Message):
                     await asyncio.sleep(3.70)
 
                     all_count, win_count = await user_count_dice_win_and_alldice(user_id)
+                    await zarik_money(game_over, user_id)
+
                     msg = await message.answer(
-                        f"{full_name}\n\n{game_info}\nВы проиграли!\n\nВсего бросков: {all_count}\nВыигрышных бросков: {win_count}")
+                        f"{game_info}\n\n{full_name} Вы проиграли!\n\nВам начислены коины: {game_over}\n"
+                        f"Не забывайте делится с другими участниками( /send )\n\n"
+                        f"Всего бросков: {all_count}\nВыигрышных бросков: {win_count}")
 
                     await asyncio.sleep(30)
                     await bot_data1.delete()
@@ -229,5 +233,13 @@ async def print_list_user_dice(data, data1, message: types.Message):
     print(users_data)
     msg = await message.answer(users_data)
     users.clear()
-    await asyncio.sleep(20)
+    await asyncio.sleep(40)
     await msg.delete()
+
+
+async def zarik_money(money, user):
+    conn = sqlite3.connect('ShopDB.db')
+    cursor = conn.cursor()
+    cursor.execute("UPDATE users SET money = money + ? WHERE user_id = ?", (money, user))
+    conn.commit()
+    conn.close()
