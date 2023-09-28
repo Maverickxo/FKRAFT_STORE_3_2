@@ -11,10 +11,11 @@ async def send_qwests(message: types.Message):
     if message.text == '/question':
         await message.answer('Введите `/question ваш вопрос` ', parse_mode='markdown')
     else:
+        user_name = message.from_user.full_name
         question_users = message.text.split('/question ', 1)[1]
         user_id = message.from_user.id
         response = f"Для ответа скопируйте `/response_storeBot {user_id} `ваш ответ"
-        await bot.send_message(support_chat_id, '*Вопрос:*\n\n' + question_users + '\n\n' + response,
+        await bot.send_message(support_chat_id, f'*Вопрос от {user_name}:*\n\n' + question_users + '\n\n' + response,
                                parse_mode='markdown')
 
         if message.chat.type == 'private':

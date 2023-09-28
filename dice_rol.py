@@ -187,17 +187,13 @@ async def send_dice(message: types.Message):
                     await asyncio.sleep(3.70)
 
                     all_count, win_count = await user_count_dice_win_and_alldice(user_id)
-                    await zarik_money(game_over, user_id)
+                    await zarik_money(message, game_over, user_id, game_info, full_name, game_over, all_count,
+                                      win_count)
 
-                    msg = await message.answer(
-                        f"{game_info}\n\n{full_name} Вы проиграли!\n\nВам начислены коины: {game_over}\n"
-                        f"Не забывайте делится с другими участниками( /send )\n\n"
-                        f"Всего бросков: {all_count}\nВыигрышных бросков: {win_count}")
 
                     await asyncio.sleep(30)
                     await bot_data1.delete()
                     await bot_data2.delete()
-                    await msg.delete()
 
             else:
                 msg = await message.answer("Вы уже бросили кубики сегодня. Попробуйте завтра!")
@@ -237,9 +233,30 @@ async def print_list_user_dice(data, data1, message: types.Message):
     await msg.delete()
 
 
-async def zarik_money(money, user):
+async def zarik_money(message: types.Message, money, user_id, game_info, full_name, game_over, all_count,
+                      win_count):
     conn = sqlite3.connect('ShopDB.db')
     cursor = conn.cursor()
-    cursor.execute("UPDATE users SET money = money + ? WHERE user_id = ?", (money, user))
+    result = cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
+    row = result.fetchone()
+    print(row)
+    if row is not None:
+        print(row)
+        cursor.execute("UPDATE users SET money = money + ? WHERE user_id = ?", (money, user_id))
+        msg = await message.answer(
+            f"{game_info}\n\n*{full_name}* Вы проиграли!\n\n"
+            f"Вам начислены коины: {game_over}\n"
+            f"\nНе забывайте делится с другими участниками ответом "
+            f"на сообщение пользователя` /send `100 \n\n"
+            f"Всего бросков: {all_count}\nВыигрышных бросков: {win_count}", parse_mode='markdown')
+        await asyncio.sleep(30)
+        await msg.delete()
+    else:
+        await message.answer('Вы не найдены в базе магазина, '
+                             'коины не будут начислены, '
+                             'примите правила магазина! '
+                             '@KRAFT_STORE_BOT ')
+        await asyncio.sleep(30)
+        await message.delete()
     conn.commit()
     conn.close()
