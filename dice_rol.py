@@ -190,8 +190,6 @@ async def send_dice(message: types.Message):
                     await zarik_money(message, game_over, user_id, game_info, full_name, game_over, all_count,
                                       win_count)
 
-
-                    await asyncio.sleep(30)
                     await bot_data1.delete()
                     await bot_data2.delete()
 
@@ -246,7 +244,7 @@ async def zarik_money(message: types.Message, money, user_id, game_info, full_na
         msg = await message.answer(
             f"{game_info}\n\n*{full_name}* Вы проиграли!\n\n"
             f"Вам начислены коины: {game_over}\n"
-            f"\nНе забывайте делится с другими участниками ответом "
+            f"\nНе забывайте делится с другими участниками: ответом "
             f"на сообщение пользователя` /send `100 \n\n"
             f"Всего бросков: {all_count}\nВыигрышных бросков: {win_count}", parse_mode='markdown')
         await asyncio.sleep(30)
