@@ -250,11 +250,11 @@ async def zarik_money(message: types.Message, money, user_id, game_info, full_na
         await asyncio.sleep(30)
         await msg.delete()
     else:
-        await message.answer('Вы не найдены в базе магазина, '
-                             'коины не будут начислены, '
-                             'примите правила магазина! '
-                             '@KRAFT_STORE_BOT ')
+        msg = await message.answer('Вы не найдены в базе магазина, '
+                                   'коины не будут начислены, '
+                                   'примите правила магазина! '
+                                   '@KRAFT_STORE_BOT ')
         await asyncio.sleep(30)
-        await message.delete()
+        await msg.delete()
     conn.commit()
     conn.close()
