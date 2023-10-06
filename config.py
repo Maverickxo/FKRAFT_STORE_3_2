@@ -1,6 +1,5 @@
 TOKEN = "6629882439:AAEDVRnFhy6KQ_jTx-E71u4GLdOxgGTNo2E" # Тестовый токен
 
-
 # TOKEN = "6207929885:AAElMvrYr-rIDI2pDENWAyJZEUxZcLVcZ3I" #магазин
 
 

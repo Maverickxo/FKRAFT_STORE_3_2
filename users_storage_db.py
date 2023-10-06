@@ -26,8 +26,11 @@ class Database:
             self.connection.commit()
 
     def set_block(self, user_id, block):
-        with self.connection:
-            return self.cursor.execute("UPDATE users SET block = ? WHERE user_id = ?", (block, user_id,))
+        try:
+            with self.connection:
+                return self.cursor.execute("UPDATE users SET block = ? WHERE user_id = ?", (block, user_id,))
+        except sqlite3.Error as e:
+            print("Ошибка SQLite:", e)
 
     def get_users(self):
         with self.connection:
