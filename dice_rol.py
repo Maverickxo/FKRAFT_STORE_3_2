@@ -147,7 +147,7 @@ async def get_user_coupons(message: types.Message):
 
 # Функция для отправки сообщения и его последующего удаления через 30 секунд
 async def send_and_delete_message(message, text, delay=30):
-    msg = await message.answer(text)
+    msg = await message.answer(text, parse_mode='markdown')
     await asyncio.sleep(delay)
     await msg.delete()
 
