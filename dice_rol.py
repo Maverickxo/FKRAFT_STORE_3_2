@@ -78,7 +78,8 @@ async def increment_user_count_dice(user_id):
         current_count = result[0]
         new_count = current_count + 1
         cursor.execute('UPDATE dice_rolls SET count_dice = ? WHERE user_id = ?', (new_count, user_id))
-        print(new_count)
+        print('Всего бросков', new_count)
+
         conn.commit()
     else:
         print(f"[Пользователь с user_id {user_id} не найден.]")
@@ -144,61 +145,66 @@ async def get_user_coupons(message: types.Message):
         await message.answer("Нет доступных купонов")
 
 
-# /dice
+# Функция для отправки сообщения и его последующего удаления через 30 секунд
+async def send_and_delete_message(message, text, delay=30):
+    msg = await message.answer(text)
+    await asyncio.sleep(delay)
+    await msg.delete()
 
+
+# Функция для удаления кубиков сообщений с задержкой
+async def delete_two_messages(msg1, msg2, delay=30):
+    await asyncio.sleep(delay)
+    await msg1.delete()
+    await msg2.delete()
+
+
+# /dice
 async def send_dice(message: types.Message):
     await message.delete()
     current_date = datetime.datetime.now().date()
     user_id = message.from_user.id
     user_name = message.from_user.mention
     full_name = message.from_user.full_name
-    if user_id == 405223969:
-        with open("krit.png", 'rb') as photo_file:
-            await message.answer_photo(photo_file, caption=f'Поздравим победителя {full_name}')
+    try:
+        if await can_throw_dice(user_id):
+            bot_data1 = await message.answer_dice()
+            dice_value1 = bot_data1.dice.value
+            bot_data2 = await message.answer_dice()
+            dice_value2 = bot_data2.dice.value
+            game_over = dice_value1 + dice_value2
+            print(f"Сумма: {game_over}")
+            await increment_user_count_dice(user_id)
 
-    else:
-        try:
-            if await can_throw_dice(user_id):
-                bot_data1 = await message.answer_dice()
-                dice_value1 = bot_data1.dice.value
-                bot_data2 = await message.answer_dice()
-                dice_value2 = bot_data2.dice.value
-                game_over = dice_value1 + dice_value2
-                print(f"Сумма: {game_over}")
-                await increment_user_count_dice(user_id)
+            if game_over == 12:
+                await write_user_last_time(user_id, current_date, user_name, full_name)
+                await asyncio.sleep(3.70)
+                game_info = status[game_over - 1][game_over]
+                all_count, win_count = await user_count_dice_win_and_alldice(user_id)
 
-                if game_over == 12:
-                    await write_user_last_time(user_id, current_date, user_name, full_name)
-                    await asyncio.sleep(3.70)
-                    game_info = status[game_over - 1][game_over]
-                    all_count, win_count = await user_count_dice_win_and_alldice(user_id)
+                await message.answer(
+                    f"{full_name}\n\nПобеда {game_info}\n\nВсего бросков: {all_count}\nВыигрышных бросков: {win_count}")
 
-                    msg = await message.answer(
-                        f"{full_name}\n\nПобеда {game_info}\n\nВсего бросков: {all_count}\nВыигрышных бросков: {win_count}")
-
-                    await increment_user_count_win(user_id)
-                    await get_user_coupons(message)
-                    # await asyncio.sleep(30)
-                    # await msg.delete()
-                else:
-
-                    await write_user_last_time(user_id, current_date, user_name, full_name)
-                    game_info = status[game_over - 1][game_over]
-                    await asyncio.sleep(3.70)
-
-                    all_count, win_count = await user_count_dice_win_and_alldice(user_id)
-                    await zarik_money(message, game_over, user_id, game_info, full_name, game_over, all_count,
-                                      win_count)
-
-                    await bot_data1.delete()
-                    await bot_data2.delete()
+                await increment_user_count_win(user_id)
+                await get_user_coupons(message)
 
             else:
-                msg = await message.answer("Вы уже бросили кубики сегодня. Попробуйте завтра!")
-                await asyncio.sleep(10)
-                await msg.delete()
-        except:
-            pass
+
+                await write_user_last_time(user_id, current_date, user_name, full_name)
+                game_info = status[game_over - 1][game_over]
+                await asyncio.sleep(3.70)
+
+                all_count, win_count = await user_count_dice_win_and_alldice(user_id)
+                await zarik_money(message, game_over, user_id, game_info, full_name, game_over, all_count,
+                                  win_count)
+
+                await asyncio.create_task(delete_two_messages(bot_data1, bot_data2, 30))
+        else:
+            msg = await message.answer("Вы уже бросили кубики сегодня. Попробуйте завтра!")
+            await asyncio.sleep(10)
+            await msg.delete()
+    except:
+        pass
 
 
 # /dice_list
@@ -231,30 +237,25 @@ async def print_list_user_dice(data, data1, message: types.Message):
     await msg.delete()
 
 
-async def zarik_money(message: types.Message, money, user_id, game_info, full_name, game_over, all_count,
-                      win_count):
+async def zarik_money(message: types.Message, money, user_id, game_info, full_name, game_over, all_count, win_count):
     conn = sqlite3.connect('ShopDB.db')
     cursor = conn.cursor()
     result = cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
     row = result.fetchone()
-    print(row)
+
     if row is not None:
-        print(row)
         cursor.execute("UPDATE users SET money = money + ? WHERE user_id = ?", (money, user_id))
-        msg = await message.answer(
-            f"{game_info}\n\n*{full_name}* Вы проиграли!\n\n"
-            f"Вам начислены коины: {game_over}\n"
-            f"\nНе забывайте делится с другими участниками: ответом "
-            f"на сообщение пользователя` /send `100 \n\n"
-            f"Всего бросков: {all_count}\nВыигрышных бросков: {win_count}", parse_mode='markdown')
-        await asyncio.sleep(30)
-        await msg.delete()
+
+        # Асинхронно отправляем сообщение и устанавливаем таймер на его удаление
+        asyncio.create_task(send_and_delete_message(message,
+                                                    f"{game_info}\n\n*{full_name}* Вы проиграли!\n\nВам начислены коины:"
+                                                    f" {game_over}\n\nНе забудьте поделиться с другими участниками: ответом на сообщение пользователя"
+                                                    f" `/send 100`\n\nВсего бросков: {all_count}\nВыигрышных бросков: {win_count}",
+                                                    29))
     else:
-        msg = await message.answer('Вы не найдены в базе магазина, '
-                                   'коины не будут начислены, '
-                                   'примите правила магазина! '
-                                   '@KRAFT_STORE_BOT ')
-        await asyncio.sleep(30)
-        await msg.delete()
+        asyncio.create_task(send_and_delete_message(message,
+                                                    'Вы не найдены в базе магазина, коины не будут начислены,'
+                                                    ' примите правила магазина! @KRAFT_STORE_BOT', 30))
+
     conn.commit()
     conn.close()
