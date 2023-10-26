@@ -249,13 +249,15 @@ async def zarik_money(message: types.Message, money, user_id, game_info, full_na
         # Асинхронно отправляем сообщение и устанавливаем таймер на его удаление
         asyncio.create_task(send_and_delete_message(message,
                                                     f"{game_info}\n\n*{full_name}* Вы проиграли!\n\nВам начислены коины:"
-                                                    f" {game_over}\n\nНе забудьте поделиться с другими участниками: ответом на сообщение пользователя"
-                                                    f" `/send 100`\n\nВсего бросков: {all_count}\nВыигрышных бросков: {win_count}",
+                                                    f" {game_over}\n\nНе забудьте делиться с другими участниками монетами: "
+                                                    f"ответом на сообщение пользователя"
+                                                    f" `/send {game_over}`\n\nВсего бросков: "
+                                                    f"{all_count}\nВыигрышных бросков: {win_count}",
                                                     29))
     else:
         asyncio.create_task(send_and_delete_message(message,
                                                     'Вы не найдены в базе магазина, коины не будут начислены,'
-                                                    ' примите правила магазина! @KRAFT_STORE_BOT', 30))
+                                                    ' примите правила магазина! *@KRAFT_STORE_BOT*', 30))
 
     conn.commit()
     conn.close()
