@@ -1,7 +1,7 @@
 from aiogram import types
 from users_storage_db import Database
 
-db = Database('ShopDB.db')
+db = Database()
 
 BAN_MSG = """
 Извините, вы были заблокированы!\nОбратитесь к админам для получения информации.

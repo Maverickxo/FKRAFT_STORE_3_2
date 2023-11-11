@@ -1,9 +1,11 @@
 from aiogram import types
-import sqlite3
+
 from users_storage_db import Database
 import asyncio
+from connect_bd import connect_data_b
+import psycopg2
 
-db = Database('ShopDB.db')
+db = Database()
 
 
 def escape_markdown(text):
@@ -11,28 +13,26 @@ def escape_markdown(text):
 
 
 async def set_money_to_zero(user_id):
-    conn = sqlite3.connect("ShopDB.db")
-    cursor = conn.cursor()
+    connection, cursor = connect_data_b()
 
     try:
         # запрос на обновление баланса пользователя. Списываем в ноль
-        cursor.execute("UPDATE users SET money=0 WHERE user_id=?", (user_id,))
-        conn.commit()
+        cursor.execute("UPDATE users SET money= 0 WHERE user_id= %s", (user_id,))
+
         return True
-    except sqlite3.Error as e:
+    except psycopg2.Error as e:
         print(f"Ошибка при выполнении запроса: {e}")
         return False
     finally:
-        conn.close()
+        connection.close()
 
 
 async def get_money_value_from_db(user_id):
-    conn = sqlite3.connect("ShopDB.db")
-    cursor = conn.cursor()
+    connection, cursor = connect_data_b()
 
     try:
 
-        cursor.execute("SELECT money FROM users WHERE user_id=?", (user_id,))
+        cursor.execute("SELECT money FROM users WHERE user_id= %s", (user_id,))
         result = cursor.fetchone()
 
         if result:
@@ -41,10 +41,10 @@ async def get_money_value_from_db(user_id):
         else:
             # Если пользователя с указанным user_id нет в базе данных, вернем 0.
             return 0
-    except sqlite3.Error as e:
+    except psycopg2.Error as e:
         print(f"Ошибка при выполнении запроса: {e}")
     finally:
-        conn.close()
+        connection.close()
 
 
 async def usr_balans_list(message: types.Message):
@@ -62,8 +62,7 @@ async def usr_balans_list(message: types.Message):
 
 
 async def add_user_balance_list(message: types.Message):
-    conn = sqlite3.connect('ShopDB.db')
-    cursor = conn.cursor()
+    connection, cursor = connect_data_b()
 
     args = message.get_args().split()
 
@@ -76,7 +75,7 @@ async def add_user_balance_list(message: types.Message):
     user_id = args[0].strip()
     amount = args[1].strip()
 
-    cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
+    cursor.execute("SELECT * FROM users WHERE user_id = %s", (user_id,))
     result = cursor.fetchone()
 
     if result is None:
@@ -92,9 +91,8 @@ async def add_user_balance_list(message: types.Message):
         await message.answer("Некорректная сумма, введите положительное число")
         return
 
-    cursor.execute("UPDATE users SET money = money + ? WHERE user_id = ?", (amount, user_id))
-    conn.commit()
-    conn.close()
+    cursor.execute("UPDATE users SET money = money + %s WHERE user_id = %s", (amount, user_id))
+    connection.close()
     money_value = await get_money_value_from_db(user_id)
 
     await message.answer(f"Баланс пользователя: *|{user_full_name}|*\n"
@@ -133,12 +131,10 @@ async def add_deposit(message: types.Message):
 
     user_id = message.reply_to_message.from_user.id
 
-    conn = sqlite3.connect('ShopDB.db')
-    cursor = conn.cursor()
+    connection, cursor = connect_data_b()
 
-    cursor.execute("UPDATE users SET money = money + ? WHERE user_id = ?", (amount, user_id))
-    conn.commit()
-    conn.close()
+    cursor.execute("UPDATE users SET money = money + %s WHERE user_id = %s", (amount, user_id))
+    connection.close()
 
     user_name = message.reply_to_message.from_user.full_name
 
@@ -154,9 +150,10 @@ async def check_user_money(message: types.Message):
 
         repl_user_money = message.reply_to_message.from_user.id
         name_user_reply = message.reply_to_message.from_user.full_name
-        conn = sqlite3.connect('ShopDB.db')
-        cursor = conn.cursor()
-        cursor.execute('SELECT money FROM users WHERE user_id=?', (repl_user_money,))
+
+        connection, cursor = connect_data_b()
+
+        cursor.execute('SELECT money FROM users WHERE user_id= %s', (repl_user_money,))
         money = cursor.fetchone()
         if money is None:
             msg = await message.answer("Пользователь не найден в магазине")
@@ -167,7 +164,7 @@ async def check_user_money(message: types.Message):
             msg = await message.answer(f'Баланс: {name_user_reply}\nKRAFT coins: {count_money}')
             await asyncio.sleep(10)
             await msg.delete()
-        conn.close()
+        connection.close()
     else:
         msg = await message.answer("Команда ответом на сообщение нужного юзера")
         await asyncio.sleep(10)

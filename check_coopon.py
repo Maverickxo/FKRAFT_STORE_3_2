@@ -1,6 +1,7 @@
-import sqlite3
 import asyncio
 from aiogram import types
+from connect_bd import connect_data_b
+
 
 async def check_coupon(message: types.Message):
     if not message.get_args():
@@ -8,15 +9,17 @@ async def check_coupon(message: types.Message):
 
     else:
         coupon_code = message.get_args()
-        conn = sqlite3.connect('ShopDB.db')
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM coupons WHERE coupon_code = ?", (coupon_code,))
+        connection, cursor = connect_data_b()
+        cursor.execute("SELECT * FROM coupons WHERE coupon_code = %s", (coupon_code,))
         result = cursor.fetchone()
         if result:
-            msg = await message.answer("Купон активен!")
+            coupon_code_value = result[1]
+            msg = await message.answer(f"Купон активен! `{coupon_code_value}`", parse_mode='markdown')
         else:
             msg = await message.answer("Купон не найден!")
-        conn.close()
-    await asyncio.sleep(5)
+        connection.close()
+    await asyncio.sleep(20)
     await message.delete()
     await msg.delete()
+
+# TODO готово!!

@@ -1,7 +1,8 @@
-import sqlite3
+import psycopg2
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
+from connect_bd import connect_data_b
 
 
 class OrderForm(StatesGroup):
@@ -10,16 +11,18 @@ class OrderForm(StatesGroup):
     PRODUCT_ACTIVE = State()
 
 
-def add_product(name, price, active):
-    conn = sqlite3.connect('ShopDB.db')
+def add_product(name, price, active):  # TODO готов
+    connection, cursor = connect_data_b()
     try:
-        conn.execute("INSERT INTO products (name, price, active) VALUES (?, ?, ?)", (name, price, active))
-        conn.commit()
+        # Не включайте "id" в запрос, если это автоматически генерируемый ключ
+        cursor.execute("INSERT INTO products (name, price, active) VALUES (%s, %s, %s)", (name, price, active))
+        connection.commit()
         print("Товар успешно добавлен в базу данных.")
-    except sqlite3.Error as e:
+    except psycopg2.Error as e:
         print(f"Ошибка при добавлении товара в базу данных: {e}")
     finally:
-        conn.close()
+        cursor.close()
+        connection.close()
 
 
 async def enter_product_name_handler(message: types.Message, state: FSMContext):

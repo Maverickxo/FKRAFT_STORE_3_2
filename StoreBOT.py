@@ -29,16 +29,20 @@ from change_status import *
 from del_price import del_price, delete_product
 from cart_calculator import process_enter_coupon, process_coupon_inline_callback
 from dice_rol import send_dice, count_user_dice_data
+from connect_bd import connect_data_b
 
 bot = Bot(token=config.TOKEN)
 dp = Dispatcher(bot, storage=MemoryStorage())
-user_db = Database("ShopDB.db")
+user_db = Database()
 conn = sqlite3.connect("ShopDB.db")
 cursor = conn.cursor()
 
 logging.basicConfig(level=logging.INFO)
 
 technical_works = False
+
+valid_indexes = ['220', '224', '225', '210', '211', '246', '247', '230', '231', '220',
+                 '222', '223', '212', '213']
 
 
 class OrderForm(StatesGroup):
@@ -64,8 +68,12 @@ async def check_technical_works(message):
 
 
 def get_products_from_db():
-    products_list = sqlite3.connect('ShopDB.db')
-    return products_list.execute("SELECT * FROM products WHERE active = 1 ").fetchall()
+    connection, cursor = connect_data_b()
+    cursor.execute("SELECT * FROM products WHERE active = 1 ORDER BY id ASC")
+
+    products_list = cursor.fetchall()
+    connection.close()  # Закрыть соединение после использования
+    return products_list
 
 
 async def start_command(message: types.Message):
@@ -216,17 +224,17 @@ async def update_button_text(message, user_id):
     products = get_products_from_db()
     keyboard = types.InlineKeyboardMarkup(row_width=2)
     for product in products:
-        button_text = f"{product[1]} - {product[2]} руб."  # Обращение к элементам по индексам
+        button_text = f"{product[1]} - {product[2]} руб."
         quantity = get_product_quantity(user_id, product)
         if quantity > 0:
             button_text += f" ({quantity} шт.)"
             decrease_button = types.InlineKeyboardButton(
                 "❌ уменьшить кол-во. ❌",
-                callback_data=f"decrease_quantity_{product[1]}",  # Обращение к названию по индексу
+                callback_data=f"decrease_quantity_{product[1]}",
             )
             keyboard.add(decrease_button)
         button = types.InlineKeyboardButton(
-            button_text, callback_data=f"add_to_cart_{product[1]}"  # Обращение к названию по индексу
+            button_text, callback_data=f"add_to_cart_{product[1]}"
         )
         keyboard.add(button)
     cart_button = types.InlineKeyboardButton("Корзина", callback_data="show_cart")
@@ -331,7 +339,11 @@ async def process_index(message: types.Message, state: FSMContext):
     if not index.isdigit() or len(index) != 6:
         await message.answer("Некорректный индекс. Пожалуйста, введите 6 цифр.")
         return
-
+    else:
+        starts_with_valid = any(index.startswith(valid_index) for valid_index in valid_indexes)
+        if starts_with_valid:
+            await message.answer('Отправка заказов в РБ недоступна, подробнее у админов в чате!')
+            return
     async with state.proxy() as data:
         data["index"] = index
     await OrderForm.CITY.set()
@@ -513,11 +525,15 @@ async def handle_check_coupon(message: types.Message):
     await check_coupon(message)
 
 
+# TODO готово
+
 @dp.message_handler(commands=["add_coupon_pack"])
 @auth
 async def handle_add_coupon_pack(message: types.Message):
     await add_coupon_pack(message)
 
+
+#TODO готов
 
 @dp.message_handler(commands=["list_coupon_of_time"])
 @auth
@@ -679,6 +695,14 @@ async def dice_rol_handler(message: types.Message):
 @auth
 async def print_dice_rol_handler(message: types.Message):
     await count_user_dice_data(message)
+
+
+from sale_day import sale
+
+
+@dp.message_handler(commands=['sale'])
+async def sale_day(message: types.Message):
+    await sale(message)
 
 
 dp.register_callback_query_handler(process_coupon_inline_callback, lambda query: query.data.startswith("coupon_"),

@@ -1,4 +1,5 @@
 import sqlite3
+from connect_bd import connect_data_b
 
 
 def calc_money_cart(money_value, total_amount1, user_id):
@@ -19,14 +20,10 @@ def calc_money_cart(money_value, total_amount1, user_id):
     return cart_data
 
 
-
-def money_ostatok_func(amount, user_id):
-    conn = sqlite3.connect('ShopDB.db')
-    cursor = conn.cursor()
-    cursor.execute("UPDATE users SET money = money + ? WHERE user_id = ?", (amount, user_id))
-    conn.commit()
-    conn.close()
-
+def money_ostatok_func(amount, user_id):  # TODO готов
+    connection, cursor = connect_data_b()
+    cursor.execute("UPDATE users SET money = money + %s WHERE user_id = %s ", (amount, user_id))
+    connection.close()
 
 # user_id = 5869013585
 # money = 1500

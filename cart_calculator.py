@@ -44,7 +44,6 @@ async def order_informer(random_number_order, total_price1, delivery, coupon, or
                                            f"Клиент: {order_user} `/ban {user_id}`", parse_mode='markdown')
 
 
-
 class OrderForm(StatesGroup):
     COUPON = State()  # Состояние ввода купона
 
@@ -170,7 +169,7 @@ async def process_enter_coupon(message: types.Message, state: FSMContext):
         await alert_hd(message)
         clear_user_cart(user_id)
 
-        # await order_informer(random_number_order, primstoim, delivery, coupon, order_user)
+        # await order_informer(random_number_order, total_price1, delivery, coupon, order_user, user_id)
     await state.finish()
 
 
@@ -213,6 +212,7 @@ async def process_coupon_inline_callback(query: types.CallbackQuery, state: FSMC
                 total_price1 = delivery_value + total_price
                 total_price1 = int(total_price1)  # Округляем до целого числа
                 cart_text += f"\nПодытог: {int(total_price)} руб. (со скидкой на опт) + {delivery} >> Итого = {total_price1} руб."
+
             else:
                 total_price1 = delivery_value + total_price
                 total_price1 = int(total_price1)  # Округляем до целого числа
@@ -256,5 +256,5 @@ async def process_coupon_inline_callback(query: types.CallbackQuery, state: FSMC
             coupon = "Без купона"
             await alert_hd(query.message)
             clear_user_cart(user_id)
-            # await order_informer(random_number_order, final_price, delivery, coupon, order_user)
+            # await order_informer(random_number_order, total_price1, delivery, coupon, order_user, user_id)
         await state.finish()

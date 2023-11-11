@@ -1,0 +1,236 @@
+@dp.message_handler(state=OrderForm.COUPON)
+async def process_enter_coupon(message: types.Message, state: FSMContext):
+    coupon = message.text
+    chat_id = message.chat.id
+    async with state.proxy() as data:
+        delivery_method = data["delivery_method"]
+        user_id = message.from_user.id
+        random_number_order = random.randint(100000, 999999)
+        cart_items = get_cart_items(user_id)
+        cart_text = f"Заказ в интернет-магазине KRAFTURPHARMASEUTICAL №{random_number_order} \n\nСодержимое корзины со скидкой:\n"
+        total_price = 0
+        discount_amount = 0  # Инициализируем переменную перед блоком try-except
+
+        try:
+            cursor.execute("SELECT * FROM coupons WHERE coupon_code = ?", (coupon,))
+            result = cursor.fetchone()
+            if result is not None:
+                await types.ChatActions.typing()
+                discount_percentage = result[2]
+                for item in cart_items:
+                    product = item["product"]
+                    quantity = item["quantity"]
+                    price = product[2] * quantity
+                    cart_text += f"- {product[1]} ({product[2]} руб.) x {quantity} = {price} руб.\n"
+                    total_price += price
+
+                discount_amount = total_price * (discount_percentage / 100)
+                total_amount = total_price - discount_amount
+
+                if result[3] == 0:
+                    cursor.execute("DELETE FROM coupons WHERE coupon_code = ?", (coupon,))
+                conn.commit()
+
+                await bot.send_message(chat_id, "Купон Применен.")
+            else:
+                buttons = [
+                    types.InlineKeyboardButton(
+                        "Вести еще раз", callback_data="coupon_yes"
+                    ),
+                    types.InlineKeyboardButton(
+                        "Продолжить без купона", callback_data="coupon_no"
+                    ),
+                ]
+                keyboard = types.InlineKeyboardMarkup(row_width=2)
+                keyboard.add(*buttons)
+                await bot.send_message(
+                    chat_id, "Купон не найден.", reply_markup=keyboard
+                )
+                return  # Возвращаемся, не выполняя расчет корзины
+
+        except sqlite3.Error as e:
+            print("Ошибка работы с базой данных:", e)
+            delivery_value = 0
+
+        # Блок расчета корзины только в случае успешного применения купона
+        delivery_options = {
+            "Экспресс": 1200,
+            "Экспресс + страховка": 1300,
+            "Обычная": 600,
+            "Обычная + страховка": 700,
+        }
+        delivery = delivery_options.get(delivery_method, "")
+        if delivery:
+            delivery_value = delivery_options[delivery_method]
+
+        total_price1 = total_price + delivery_value
+
+        cart_text += (
+            f"\nПодытог: {total_price} руб. + {delivery} >> Итого = {total_price1} руб."
+        )
+        total_amount1 = total_amount + delivery_value
+
+        random_number = random.choice(numbers_cards)
+        await bot.send_message(
+            user_id,
+            f"{cart_text}\n\n"
+            f"Информация о заказе:\n"
+            f"ФИО: {data['fio']}\n"
+            f"Индекс: {data['index']}\n"
+            f"Город: {data['city']}\n"
+            f"Улица: {data['street']}\n"
+            f"Номер дома и квартиры: {data['house']}\n\n"
+            f"Итоговая сумма после скидки: {total_amount} руб.\n"
+            f"Сумма скидки: {discount_amount} руб.\n"
+            f"Процент скидки: {discount_percentage} %.\n\n"
+            f"Купон: {coupon} \n\n"
+            f"Реквизиты для оплаты:\n"
+            "--------------------------------------------\n"
+            f"{random_number}\n"
+            "--------------------------------------------\n"
+            f"Сумма к оплате: {total_amount1} руб.\n",
+        )
+        await alert_hd(message)
+        clear_user_cart(user_id)
+        # await bot.send_message(-1001683359105, f"Оформлен заказ №{random_number_order}"
+        #                                        f"\nСумма к оплате: {total_price1} руб."
+        #                                        f"\nОтправка:{delivery}")
+    await state.finish()
+
+@dp.callback_query_handler(
+    lambda query: query.data.startswith("coupon_"), state=OrderForm.COUPON
+)
+async def process_coupon_inline_callback(query: types.CallbackQuery, state: FSMContext):
+    chat_id = query.message.chat.id
+    callback_data = query.data
+    if callback_data == "coupon_yes":
+        await bot.send_message(chat_id, "Введите купон:")
+        await OrderForm.COUPON.set()
+    elif callback_data == "coupon_no":
+        await bot.send_message(chat_id, "Продолжаем без купона...")
+        async with state.proxy() as data:
+            delivery_method = data["delivery_method"]
+        async with state.proxy() as data:
+            user_id = query.from_user.id
+            random_number_order = random.randint(100000, 999999)
+            cart_items = get_cart_items(user_id)
+            cart_text = f"Заказ в интернет-магазине KRAFTURPHARMASEUTICAL №{random_number_order} \n\nСодержимое корзины:\n"
+            total_price = 0
+            for item in cart_items:
+                product = item["product"]
+                quantity = item["quantity"]
+                price = product[2] * quantity
+                cart_text += f"- {product[1]} ({product[2]} руб.) x {quantity} = {price} руб.\n"
+                total_price += price
+                total_price1 = total_price
+                delivery_value = 0
+
+            if delivery_method == "Экспресс":
+                delivery = "‼️Экспресс: 1200р.‼️"
+                delivery_value = 1200
+
+            elif delivery_method == "Экспресс + страховка":
+                delivery = "‼️Экспресс + ✅страховка✅: 1300р.‼️"
+                delivery_value = 1300
+
+            elif delivery_method == "Обычная":
+                delivery_value = 600
+                delivery = "Обычная: 600р."
+
+            elif delivery_method == "Обычная + страховка":
+                delivery_value = 700
+                delivery = "Обычная + ✅страховка✅: 700р."
+
+            if total_price >= 130000:
+                discount = total_price * 0.15
+                total_price -= discount
+                total_price1 = delivery_value + total_price
+                cart_text += f"\nПодытог: {total_price} руб. (со скидкой на опт) + {delivery} >> Итого = {total_price1} руб."
+            else:
+                total_price1 = delivery_value + total_price
+                cart_text += f"\nПодытог: {total_price} руб. + {delivery} >> Итого = {total_price1} руб."
+            random_number = random.choice(numbers_cards)
+
+            await bot.send_message(
+                user_id,
+                f"{cart_text}\n\n"
+                f"Информация о заказе:\n"
+                f"ФИО: {data['fio']}\n"
+                f"Индекс: {data['index']}\n"
+                f"Город: {data['city']}\n"
+                f"Улица: {data['street']}\n"
+                f"Номер дома и квартиры: {data['house']}\n\n"
+                f"Реквизиты для оплаты:\n"
+                "--------------------------------------------\n"
+                f"{random_number}\n"
+                "--------------------------------------------\n"
+                f"Сумма к оплате: {total_price1} руб.\n",
+            )
+
+            await alert_hd(query.message)
+            clear_user_cart(user_id)
+            # await bot.send_message(-1001683359105, f"Оформлен заказ №{random_number_order}"
+            #                                        f"\nСумма к оплате: {total_price1} руб."
+            #                                        f"\nОтправка:{delivery}")
+        await state.finish()
+
+
+from aiogram.types import CallbackQuery
+
+
+@dp.callback_query_handler(state=OrderForm.WAIT_FOR_MONEY)
+async def process_money_response(callback_query: CallbackQuery, state: FSMContext):
+    async with state.proxy() as data:
+        if callback_query.data == "use_money_yes":
+            data["money_used"] = True
+            money_value = data.get("money_value", 0)  # Получаем money_value из данных состояния.
+            # Используем money_value по необходимости.
+            await callback_query.message.answer(f"Используем деньги на счету: {money_value}")
+            await process_enter_coupon(callback_query.message, state, money_value)
+            await process_coupon_inline_callback(callback_query, state, money_value)
+        else:
+            data["money_used"] = False
+        # После обработки ответа переходим к состоянию INDEX.
+        await OrderForm.FIO.set()
+        await callback_query.message.answer("Введите ваш индекс:")
+
+
+
+    user_id = message.from_user.id
+    money_value = get_money_value_from_db(user_id)
+
+    if money_value > 0:
+        # Если значение money больше 0, показываем инлайн-кнопки.
+        await state.update_data(money_value=money_value)  # Сохраняем money_value в состоянии.
+
+        # Создаем инлайн-кнопки
+        keyboard = InlineKeyboardMarkup()
+        yes_button = InlineKeyboardButton("Да", callback_data="use_money_yes")
+        no_button = InlineKeyboardButton("Нет", callback_data="use_money_no")
+        keyboard.add(yes_button, no_button)
+
+        await message.answer(f"У вас есть деньги на счету ({money_value}). Желаете использовать их?",
+                             reply_markup=keyboard)
+        await OrderForm.WAIT_FOR_MONEY.set()  # Переходим на новое состояние.
+    else:
+        # Если значение money равно 0 или меньше, переходим к состоянию INDEX.
+
+def get_money_value_from_db(user_id):
+    conn = sqlite3.connect("ShopDB.db")  # Подключение к базе данных
+    cursor = conn.cursor()
+
+    try:
+        # Выполним запрос к базе данных для получения количества денег для указанного user_id.
+        cursor.execute("SELECT money FROM users WHERE user_id=?", (user_id,))
+        result = cursor.fetchone()
+
+        if result:
+            money_value = result[0]
+            return money_value
+        else:
+            # Если пользователя с указанным user_id нет в базе данных, вернем 0.
+            return 0
+    except sqlite3.Error as e:
+        print(f"Ошибка при выполнении запроса: {e}")
+    finally:
+        conn.close()

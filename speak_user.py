@@ -5,7 +5,8 @@ import time
 import config
 
 bot = Bot(token=config.TOKEN)
-db = Database('ShopDB.db')
+db = Database()
+
 
 
 async def speak_user(message: types.Message):

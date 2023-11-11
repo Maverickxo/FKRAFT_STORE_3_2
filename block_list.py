@@ -2,7 +2,7 @@ from aiogram import types
 from users_storage_db import Database
 import asyncio
 
-db = Database('ShopDB.db')
+db = Database()
 
 
 async def usr_count_ban(message: types.Message):
