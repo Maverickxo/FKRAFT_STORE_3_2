@@ -21,7 +21,7 @@ async def product_list(message: types.Message):  # TODO готов
             pass
         except Exception as e:
             print(f"Ошибка при удалении предыдущего сообщения: {e}")
-    cursor.execute("SELECT name, active FROM products")
+    cursor.execute("SELECT name, active FROM products ORDER BY id ASC")
     products_info = cursor.fetchall()
     if len(products_info) == 0:
         await message.answer("⚠️В магазине не добавлены товары⚠️\nдля добавления товара используйте |`/add_product`|",

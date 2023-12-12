@@ -1,4 +1,3 @@
-import sqlite3
 from connect_bd import connect_data_b
 
 
@@ -23,9 +22,5 @@ def calc_money_cart(money_value, total_amount1, user_id):
 def money_ostatok_func(amount, user_id):  # TODO готов
     connection, cursor = connect_data_b()
     cursor.execute("UPDATE users SET money = money + %s WHERE user_id = %s ", (amount, user_id))
+    cursor.close()
     connection.close()
-
-# user_id = 5869013585
-# money = 1500
-# total_price = 6000
-# print(calc_money_cart(money, total_price, user_id))

@@ -1,6 +1,4 @@
 import logging
-import sqlite3
-import types
 
 from cart_utils import clear_user_cart, get_cart_items, add_to_cart, remove_from_cart, get_product_quantity
 
@@ -28,14 +26,17 @@ from change_price import *
 from change_status import *
 from del_price import del_price, delete_product
 from cart_calculator import process_enter_coupon, process_coupon_inline_callback
-from dice_rol import send_dice, count_user_dice_data
+from dice_rol import send_dice, dice_info
 from connect_bd import connect_data_b
+from sale_day import sale, count_pesent_coupon
+from check_user_zakaz import check_user_zakazz, delete_user_zakaz
+
+from new_users_chat import new_chat_users, lv_chat_users
+from order_cleaner import check_time_order
 
 bot = Bot(token=config.TOKEN)
 dp = Dispatcher(bot, storage=MemoryStorage())
 user_db = Database()
-conn = sqlite3.connect("ShopDB.db")
-cursor = conn.cursor()
 
 logging.basicConfig(level=logging.INFO)
 
@@ -484,7 +485,8 @@ async def rules(call: types.CallbackQuery):
 @dp.message_handler(commands=["speak_store"])
 @auth
 async def speak(message: types.Message):
-    await speak_user(message)
+    # await speak_user(message)
+    asyncio.create_task(speak_user(message))
 
 
 @dp.message_handler(commands=["users_count"])
@@ -533,7 +535,7 @@ async def handle_add_coupon_pack(message: types.Message):
     await add_coupon_pack(message)
 
 
-#TODO готов
+# TODO готов
 
 @dp.message_handler(commands=["list_coupon_of_time"])
 @auth
@@ -691,18 +693,35 @@ async def dice_rol_handler(message: types.Message):
     await send_dice(message)
 
 
-@dp.message_handler(commands=['dice_list'])
+@dp.message_handler(commands=['dice_info'])
 @auth
 async def print_dice_rol_handler(message: types.Message):
-    await count_user_dice_data(message)
-
-
-from sale_day import sale
+    await dice_info(message)
 
 
 @dp.message_handler(commands=['sale'])
 async def sale_day(message: types.Message):
     await sale(message)
+
+
+@dp.message_handler(commands=['count_cup'])
+async def count_coupone_persent(message: types.Message):
+    await count_pesent_coupon(message)
+
+
+@dp.message_handler(commands=['status'])
+async def check_user_zakaz(message: types.Message):
+    await check_user_zakazz(message)
+
+
+@dp.message_handler(commands=['del_zakaz'])
+async def del_user_zakaz(message: types.Message):
+    await delete_user_zakaz(message)
+
+
+@dp.message_handler(commands=['delzak'])
+async def del_user_z(message: types.Message):
+    await check_time_order()
 
 
 dp.register_callback_query_handler(process_coupon_inline_callback, lambda query: query.data.startswith("coupon_"),

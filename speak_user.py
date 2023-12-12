@@ -1,14 +1,13 @@
-from aiogram import types, Bot
+from aiogram import types
 from users_storage_db import Database
 import aiogram.utils.exceptions
 import time
-import config
+from StoreBOT import bot
 
-bot = Bot(token=config.TOKEN)
 db = Database()
 
 
-
+# TODO вынести в отдельную
 async def speak_user(message: types.Message):
     if not message.get_args():
         await message.answer("Введите текст для рассылки `/speak_store Приветствую тебя!`", parse_mode='markdown')

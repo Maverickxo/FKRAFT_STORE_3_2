@@ -1,4 +1,3 @@
-import sqlite3
 from aiogram import types
 from StoreBOT import bot
 from connect_bd import connect_data_b
@@ -11,6 +10,7 @@ async def change_product_status(callback_query: types.CallbackQuery):  # TODO г
     current_status = cursor.fetchone()[0]
     new_status = 1 if current_status == 0 else 0
     cursor.execute("UPDATE products SET active = %s WHERE name = %s", (new_status, product_name))
+    cursor.close()
     connection.close()
     status_text = "включен" if new_status == 1 else "выключен"
     new_button_text = f"{product_name} ({status_text})"

@@ -1,5 +1,4 @@
 from aiogram import types
-import sqlite3
 import asyncio
 from connect_bd import connect_data_b
 
@@ -26,7 +25,8 @@ async def del_price(message: types.Message):  # TODO Готов
         await asyncio.sleep(40)
         await msg.delete()
         await message.delete()
-
+    cursor.close()
+    connection.close()
 
 # Обработчик команды /del
 async def delete_product(message: types.Message):  # TODO готов
@@ -42,10 +42,12 @@ async def delete_product(message: types.Message):  # TODO готов
     if result:
         # Удаляем товар из базы данных
         cursor.execute("DELETE FROM products WHERE name = %s", (product_name,))
-        connection.close()
+
         msg = await message.answer(f"Товар `|{product_name}|` успешно удален.", parse_mode='Markdown')
     else:
         msg = await message.answer(f"Товар с названием `|{product_name}|` не найден.", parse_mode='Markdown')
+    cursor.close()
+    connection.close()
     await asyncio.sleep(10)
     await msg.delete()
     await message.delete()

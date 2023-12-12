@@ -12,9 +12,9 @@ from user_money_to_cart import calc_money_cart
 from datetime import datetime, timedelta
 
 from delivery_method import mode_of_delivery
+from connect_bd import connect_data_b
 
-conn = sqlite3.connect("ShopDB.db")
-cursor = conn.cursor()
+from order_cleaner import non_pay_orders
 
 
 def get_dt():
@@ -30,18 +30,24 @@ async def calculate_delivery_cost(product_price, delivery_cost):
     if delivery_increase > 0:
         increased_cost = delivery_increase * 100
         delivery_cost += increased_cost
+        info_delivery = (f"Стоимость доставки увеличилась на: {increased_cost} руб.\n"
+                         f"Итоговая стоимость доставки: {delivery_cost} руб.\n\n")
     else:
         increased_cost = 0
+        info_delivery = ''
 
-    return delivery_cost, increased_cost
+    return delivery_cost, increased_cost, info_delivery
 
 
-async def order_informer(random_number_order, total_price1, delivery, coupon, order_user, user_id):
+async def order_informer(random_number_order, total_price1, delivery, coupon, order_user, user_id, sent_chat_id,
+                         sent_message_id):
+    # await non_pay_orders(sent_message_id, sent_chat_id, random_number_order) #TODO разкоментировать после тестов
     await bot.send_message(-1001683359105, f"Оформлен заказ №{random_number_order}\n"
                                            f"Сумма к оплате: {total_price1} руб.\n"
                                            f"Отправка: {delivery}\n"
                                            f"Купон: {coupon}\n\n"
-                                           f"Клиент: {order_user} `/ban {user_id}`", parse_mode='markdown')
+                                           f"Клиент: {order_user} `/ban {user_id}`\n\n"
+                                           f"`/del_zakaz {sent_chat_id} {sent_message_id}`", parse_mode='markdown')
 
 
 class OrderForm(StatesGroup):
@@ -64,11 +70,13 @@ async def process_enter_coupon(message: types.Message, state: FSMContext):
         discount_amount = 0
 
         try:
-            cursor.execute("SELECT * FROM coupons WHERE coupon_code = ?", (coupon,))
+            connection, cursor = connect_data_b()
+            cursor.execute("SELECT * FROM coupons WHERE coupon_code = %s", (coupon,))
             result = cursor.fetchone()
+
             if result is not None:
                 await types.ChatActions.typing()
-                discount_percentage = result[2]
+                discount_percentage = int(result[2])
                 for item in cart_items:
                     product = item["product"]
                     quantity = item["quantity"]
@@ -80,8 +88,7 @@ async def process_enter_coupon(message: types.Message, state: FSMContext):
                 total_amount = int(total_price - discount_amount)
 
                 if result[3] == 0:
-                    cursor.execute("DELETE FROM coupons WHERE coupon_code = ?", (coupon,))
-                conn.commit()
+                    cursor.execute("DELETE FROM coupons WHERE coupon_code = %s", (coupon,))
 
                 await bot.send_message(chat_id, "Купон Применен.")
             else:
@@ -100,7 +107,10 @@ async def process_enter_coupon(message: types.Message, state: FSMContext):
                 )
                 return  # Возвращаемся, не выполняя расчет корзины
 
-        except sqlite3.Error as e:
+            cursor.close()
+            connection.close()
+
+        except psycopg2.Error as e:
             print("Ошибка работы с базой данных:", e)
             delivery_value = 0
 
@@ -122,7 +132,7 @@ async def process_enter_coupon(message: types.Message, state: FSMContext):
         cart_text += (
             f"\nПодытог: {total_price} руб. + {delivery} >> Итого = {total_price1} руб."
         )
-        total_cost, increased_delivery = await calculate_delivery_cost(total_price, delivery_value)
+        total_cost, increased_delivery, info_delivery = await calculate_delivery_cost(total_price, delivery_value)
 
         total_amount1 = total_amount + delivery_value
 
@@ -137,7 +147,7 @@ async def process_enter_coupon(message: types.Message, state: FSMContext):
 
         if primstoim <= 0:
             primstoim = "❗️ОПЛАЧЕНО❗️"
-        await bot.send_message(
+        msg = await bot.send_message(
             user_id,
             f"{cart_text}\n\n"
             "Информация о заказе:\n"
@@ -149,15 +159,14 @@ async def process_enter_coupon(message: types.Message, state: FSMContext):
             f"Улица: {data['street']}\n"
             f"Номер дома и квартиры: {data['house']}\n"
             "\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\n\n"
+            f"{info_delivery}"
             f"Купон: {coupon}\n"
-            f"Процент скидки: {discount_percentage} %.\n"
+            f"Процент скидки: {discount_percentage} %\n"
             f"Сумма скидки: {discount_amount} руб.\n"
             f"После применения купона : {total_amount} руб.\n\n"
-
             f"{cart_data}\n"
-
-            f"Стоимость доставки увеличилась на: {increased_delivery} руб.\n"
-            f"Итоговая стоимость доставки: {total_cost} руб.\n\n"
+            # f"Стоимость доставки увеличилась на: {increased_delivery} руб.\n"
+            # f"Итоговая стоимость доставки: {total_cost} руб.\n\n"
 
             "Реквизиты для оплаты:\n"
             "--------------------------------------------\n"
@@ -168,15 +177,21 @@ async def process_enter_coupon(message: types.Message, state: FSMContext):
         coupon = f"{coupon} - {discount_percentage}%"
         await alert_hd(message)
         clear_user_cart(user_id)
-
-        # await order_informer(random_number_order, total_price1, delivery, coupon, order_user, user_id)
+        sent_chat_id = msg.chat.id
+        sent_message_id = msg.message_id
+        print(f'/del_zakaz {msg.chat.id} {msg.message_id}')
+        await non_pay_orders(sent_message_id, sent_chat_id, random_number_order)
+        # await order_informer(random_number_order, total_price1, delivery, coupon, order_user, user_id, sent_chat_id,
+        #                      sent_message_id)
     await state.finish()
 
 
 async def process_coupon_inline_callback(query: types.CallbackQuery, state: FSMContext):
     order_user = query.from_user.full_name
-    formatted_datetime = get_dt()
+    msgid = query.message.message_id
     chat_id = query.message.chat.id
+    formatted_datetime = get_dt()
+
     callback_data = query.data
     if callback_data == "coupon_yes":
         await bot.send_message(chat_id, "Введите купон:")
@@ -204,8 +219,6 @@ async def process_coupon_inline_callback(query: types.CallbackQuery, state: FSMC
 
                 delivery_value, delivery = mode_of_delivery(delivery_method)
 
-            #
-
             if total_price >= 130000:
                 discount = total_price * 0.15
                 total_price -= discount
@@ -222,7 +235,8 @@ async def process_coupon_inline_callback(query: types.CallbackQuery, state: FSMC
             digits = random_number[:19]
             remaining_text = random_number[20:]
 
-            total_cost, increased_delivery = await calculate_delivery_cost(int(total_price), int(delivery_value))
+            total_cost, increased_delivery, info_delivery = await calculate_delivery_cost(int(total_price),
+                                                                                          int(delivery_value))
 
             final_price = increased_delivery + total_price1
 
@@ -231,7 +245,7 @@ async def process_coupon_inline_callback(query: types.CallbackQuery, state: FSMC
 
             if final_price <= 0:
                 final_price = "❗️ОПЛАЧЕНО❗️"
-            await bot.send_message(
+            sent_message = await bot.send_message(
                 user_id,
                 f"{cart_text}\n\n"
                 f"Информация о заказе:\n"
@@ -243,10 +257,9 @@ async def process_coupon_inline_callback(query: types.CallbackQuery, state: FSMC
                 f"Улица: {data['street']}\n"
                 f"Номер дома и квартиры: {data['house']}\n"
                 "\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\n\n"
-
-                f"Стоимость доставки увеличилась на: {increased_delivery} руб.\n"
-                f"Итоговая стоимость доставки: {total_cost} руб.\n\n"
-
+                # f"Стоимость доставки увеличилась на: {increased_delivery} руб.\n"
+                # f"Итоговая стоимость доставки: {total_cost} руб.\n\n"
+                f"{info_delivery}"
                 f"{cart_data}\n\n"
                 f"Реквизиты для оплаты:\n"
                 "--------------------------------------------\n"
@@ -256,5 +269,10 @@ async def process_coupon_inline_callback(query: types.CallbackQuery, state: FSMC
             coupon = "Без купона"
             await alert_hd(query.message)
             clear_user_cart(user_id)
-            # await order_informer(random_number_order, total_price1, delivery, coupon, order_user, user_id)
+            sent_chat_id = sent_message.chat.id
+            sent_message_id = sent_message.message_id
+            print(f'/del_zakaz {sent_message.chat.id} {sent_message.message_id}')
+            await non_pay_orders(sent_message_id, sent_chat_id, random_number_order)
+            # await order_informer(random_number_order, total_price1, delivery, coupon, order_user, user_id, sent_chat_id,
+            #                      sent_message_id)
         await state.finish()

@@ -4,6 +4,11 @@ import random
 from connect_bd import connect_data_b
 
 
+# TODO модуль готов
+def generate_coupon_code():
+    return ''.join(random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=20))
+
+
 async def add_coupon(message: types.Message):  # TODO готов
     connection, cursor = connect_data_b()
     args = message.get_args().split()
@@ -25,19 +30,16 @@ async def add_coupon(message: types.Message):  # TODO готов
     existing_coupon = cursor.fetchone()
     if existing_coupon:
         await message.answer("Такой купон уже существует.")
-        connection.close()
-
         return
-    cursor.execute("INSERT INTO coupons (coupon_code, discount_percentage) VALUES (%s, %s)",
-                   (coupon_code, discount_percentage))
+    try:
+        cursor.execute("INSERT INTO coupons (coupon_code, discount_percentage) VALUES (%s, %s)",
+                       (coupon_code, discount_percentage))
 
-    await message.answer(
-        f"Купон добавлен:\nКод купона: {coupon_code}\nПроцент скидки: {discount_percentage}%")
-    connection.close()
-
-
-def generate_coupon_code():
-    return ''.join(random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=16))
+        await message.answer(
+            f"Купон добавлен:\nКод купона: {coupon_code}\nПроцент скидки: {discount_percentage}%")
+    finally:
+        cursor.close()
+        connection.close()
 
 
 async def add_coupon_pack(message: types.Message):  # TODO готов
@@ -57,12 +59,14 @@ async def add_coupon_pack(message: types.Message):  # TODO готов
     except ValueError:
         await message.answer("Некорректный процент скидки. Введите число от 1 до 100.")
         return
-
-    for _ in range(int(coupon_count)):
-        coupon_code = generate_coupon_code()
-        cursor.execute('INSERT INTO coupons (coupon_code, discount_percentage) VALUES (%s, %s)',
-                       (coupon_code, discount_percentage))
-    connection.close()
+    try:
+        for _ in range(int(coupon_count)):
+            coupon_code = generate_coupon_code()
+            cursor.execute('INSERT INTO coupons (coupon_code, discount_percentage) VALUES (%s, %s)',
+                           (coupon_code, discount_percentage))
+    finally:
+        cursor.close()
+        connection.close()
 
     await message.answer(
         f"Купоны добавлены: {coupon_count} шт.\nПроцент скидки: {discount_percentage}%")
@@ -85,20 +89,22 @@ async def add_coupon_off_time(message: types.Message):  # TODO готов
     except ValueError:
         await message.answer("Некорректный процент скидки. Введите число от 1 до 100.")
         return
+    try:
+        cursor.execute("SELECT * FROM coupons WHERE coupon_code = %s", (coupon_code,))
+        existing_coupon = cursor.fetchone()
+        if existing_coupon:
+            await message.answer("Такой купон уже существует.")
 
-    cursor.execute("SELECT * FROM coupons WHERE coupon_code = %s", (coupon_code,))
-    existing_coupon = cursor.fetchone()
-    if existing_coupon:
-        await message.answer("Такой купон уже существует.")
+            return
+        cursor.execute("INSERT INTO coupons (coupon_code, discount_percentage, off_time) VALUES (%s, %s, 1)",
+                       (coupon_code, discount_percentage))
+
+        await message.answer(
+            f"Бессрочный купон добавлен:\nКод купона: *{coupon_code}*\nПроцент скидки: {discount_percentage}%",
+            parse_mode='markdown')
+    finally:
+        cursor.close()
         connection.close()
-        return
-    cursor.execute("INSERT INTO coupons (coupon_code, discount_percentage, off_time) VALUES (%s, %s, 1)",
-                   (coupon_code, discount_percentage))
-    connection.close()
-
-    await message.answer(
-        f"Бессрочный купон добавлен:\nКод купона: *{coupon_code}*\nПроцент скидки: {discount_percentage}%",
-        parse_mode='markdown')
 
 
 async def delete_coupon_by_code(message: types.Message):  # TODO готов
@@ -108,16 +114,13 @@ async def delete_coupon_by_code(message: types.Message):  # TODO готов
         await message.answer("Неверный формат команды.\nИспользуйте `/del_coupon_off_time <код купона>`",
                              parse_mode='markdown')
         return
-
     coupon_code = args[0].upper()
-
     try:
 
         cursor.execute("SELECT * FROM coupons WHERE coupon_code = %s", (coupon_code,))
         result = cursor.fetchone()
         if result:
             cursor.execute("DELETE FROM coupons WHERE coupon_code = %s", (coupon_code,))
-
             await message.answer(f"Купон `{coupon_code}` успешно удален.", parse_mode='markdown')
         else:
 
@@ -125,6 +128,7 @@ async def delete_coupon_by_code(message: types.Message):  # TODO готов
 
     except sqlite3.Error as e:
         print("Ошибка удаления купона:", e)
-
         await message.answer("Произошла ошибка при удалении купона.")
-    connection.close()
+    finally:
+        cursor.close()
+        connection.close()

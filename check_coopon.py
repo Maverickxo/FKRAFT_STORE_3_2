@@ -12,11 +12,13 @@ async def check_coupon(message: types.Message):
         connection, cursor = connect_data_b()
         cursor.execute("SELECT * FROM coupons WHERE coupon_code = %s", (coupon_code,))
         result = cursor.fetchone()
+
         if result:
             coupon_code_value = result[1]
             msg = await message.answer(f"Купон активен! `{coupon_code_value}`", parse_mode='markdown')
         else:
             msg = await message.answer("Купон не найден!")
+        cursor.close()
         connection.close()
     await asyncio.sleep(20)
     await message.delete()

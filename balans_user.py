@@ -24,6 +24,7 @@ async def set_money_to_zero(user_id):
         print(f"Ошибка при выполнении запроса: {e}")
         return False
     finally:
+        cursor.close()
         connection.close()
 
 
@@ -44,6 +45,7 @@ async def get_money_value_from_db(user_id):
     except psycopg2.Error as e:
         print(f"Ошибка при выполнении запроса: {e}")
     finally:
+        cursor.close()
         connection.close()
 
 
@@ -63,10 +65,9 @@ async def usr_balans_list(message: types.Message):
 
 async def add_user_balance_list(message: types.Message):
     connection, cursor = connect_data_b()
-
     args = message.get_args().split()
-
     user_full_name = message.from_user.full_name
+
     if len(args) != 2:
         await message.answer("Неверный формат команды.\nИспользуйте: `/add_user_balance <id пользователя> <сумма>`",
                              parse_mode='Markdown')
@@ -92,16 +93,17 @@ async def add_user_balance_list(message: types.Message):
         return
 
     cursor.execute("UPDATE users SET money = money + %s WHERE user_id = %s", (amount, user_id))
-    connection.close()
     money_value = await get_money_value_from_db(user_id)
 
     await message.answer(f"Баланс пользователя: *|{user_full_name}|*\n"
                          f"Пополнен на: {amount} успешно!\n"
                          f"Текущий баланс: {money_value}",
                          parse_mode='markdown')
+    cursor.close()
+    connection.close()
 
 
-async def add_deposit(message: types.Message):
+async def add_deposit(message: types.Message):  # TODO готов
     if message.reply_to_message is None:
         msg = await message.reply("Этой командой нужно отвечать на сообщение пользователя")
         await message.delete()
@@ -134,6 +136,7 @@ async def add_deposit(message: types.Message):
     connection, cursor = connect_data_b()
 
     cursor.execute("UPDATE users SET money = money + %s WHERE user_id = %s", (amount, user_id))
+    cursor.close()
     connection.close()
 
     user_name = message.reply_to_message.from_user.full_name
@@ -144,7 +147,7 @@ async def add_deposit(message: types.Message):
     await msg.delete()
 
 
-async def check_user_money(message: types.Message):
+async def check_user_money(message: types.Message):  # TODO готов
     await message.delete()
     if message.reply_to_message and message.reply_to_message.from_user:
 
@@ -164,6 +167,7 @@ async def check_user_money(message: types.Message):
             msg = await message.answer(f'Баланс: {name_user_reply}\nKRAFT coins: {count_money}')
             await asyncio.sleep(10)
             await msg.delete()
+        cursor.close()
         connection.close()
     else:
         msg = await message.answer("Команда ответом на сообщение нужного юзера")

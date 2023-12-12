@@ -32,6 +32,7 @@ async def handle_new_price(message: types.Message, state: FSMContext):  # TODO �
         return
 
     cursor.execute("UPDATE products SET price = %s WHERE name = %s", (new_price, product_name))
+    cursor.close()
     connection.close()
     await message.answer(f"Цена для товара `|{product_name}|`\nобновлена: `|{new_price} руб.|`", parse_mode='markdown')
     await state.finish()

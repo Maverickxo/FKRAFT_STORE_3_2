@@ -35,7 +35,9 @@ class Database:
 
     def get_users(self):
         with self.connection:
-            return self.cursor.execute("SELECT user_id, block FROM users").fetchall()
+            self.cursor.execute("SELECT user_id, block FROM users")
+            result = self.cursor.fetchall()
+            return result
 
     def check_ban_status(self, user_id):
         with self.connection:

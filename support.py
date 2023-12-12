@@ -28,14 +28,14 @@ async def send_qwests(message: types.Message):
         return user_id
 
 
-async def send_response(message: types.Message):
+async def send_response(message: types.Message):  # TODO проверить работу
     if len(message.text.split()) <= 2:
         await message.answer('Забыл ввести ответ ')
     else:
         command, user_id, response_text = message.text.split(' ', 2)
-    try:
-        await bot.send_message(chat_id=user_id, text=f'*Ответ от тех. поддержки:*\n\n *{response_text}*',
-                               parse_mode='markdown')
-        await message.answer('Ответ отправлен')
-    except:
-        await message.answer('Ответ не отправлен')
+        try:
+            await bot.send_message(chat_id=user_id, text=f'*Ответ от тех. поддержки:*\n\n *{response_text}*',
+                                   parse_mode='markdown')
+            await message.answer('Ответ отправлен')
+        except:
+            await message.answer('Ответ не отправлен')

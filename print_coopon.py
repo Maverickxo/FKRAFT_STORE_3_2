@@ -18,10 +18,11 @@ async def print_coupons(message: types.Message):  # TODO готов
             random_coupon = random.choice(results)
             coupon_code = random_coupon[1]
             await message.answer(
-                f"Случайный купон на {argument}%:\nКод купона: {coupon_code}")
+                f"Случайный купон на {argument}%:\nКод купона: `{coupon_code}`", parse_mode='markdown')
         else:
             await message.answer("Нет купонов с указанным процентом скидки")
-        connection.close()
+    cursor.close()
+    connection.close()
 
 
 async def weekend_coupons(message: types.Message):  # TODO готов
@@ -30,7 +31,7 @@ async def weekend_coupons(message: types.Message):  # TODO готов
     results_5_percent = cursor.fetchall()
     cursor.execute("SELECT * FROM coupons WHERE discount_percentage = 10 ORDER BY RANDOM() LIMIT 3")
     results_10_percent = cursor.fetchall()
-    connection.close()
+
     all_results = results_5_percent + results_10_percent
 
     if all_results:
@@ -47,6 +48,8 @@ async def weekend_coupons(message: types.Message):  # TODO готов
 
     else:
         await message.answer("Нет доступных купонов")
+    cursor.close()
+    connection.close()
 
 
 async def print_coupons_off_time(message: types.Message):  # TODO готов
@@ -59,4 +62,5 @@ async def print_coupons_off_time(message: types.Message):  # TODO готов
         await message.answer(f"Список бессрочных купонов:\n\n{coupon_list}", parse_mode='markdown')
     else:
         await message.answer("Нет бессрочных купонов.")
+    cursor.close()
     connection.close()
