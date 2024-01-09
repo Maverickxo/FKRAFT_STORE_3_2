@@ -31,8 +31,11 @@ from connect_bd import connect_data_b
 from sale_day import sale, count_pesent_coupon
 from check_user_zakaz import check_user_zakazz, delete_user_zakaz
 
+from status_bot import on_startup
+
 from new_users_chat import new_chat_users, lv_chat_users
 from order_cleaner import check_time_order
+
 
 bot = Bot(token=config.TOKEN)
 dp = Dispatcher(bot, storage=MemoryStorage())
@@ -180,10 +183,16 @@ async def show_cart(callback_query: types.CallbackQuery):
                     clear_button = types.InlineKeyboardButton(
                         "Очистить корзину", callback_data="clear_cart"
                     )
-                    keyboard.add(clear_button)
+
+                    continue_btn = types.InlineKeyboardButton("Продолжить", callback_data="buy600")
+
+                    keyboard.add(clear_button, continue_btn)
+
                     await bot.send_message(
                         user_id,
-                        f"Минимальная сумма заказа: 4500руб. Ваш заказ: {total_price}руб.",
+                        f"Минимальная сумма заказа: 4500руб.\n"
+                        f"Ваш заказ: {total_price}руб.\n"
+                        f"Стоимость доставки будет увеличена на +600р",
                         reply_markup=keyboard,
                     )
                     return
@@ -273,22 +282,53 @@ async def buy_product(callback_query: types.CallbackQuery, state: FSMContext):
         await callback_query.answer("⚠️В магазине ведутся тех работы⚠️")
     else:
         user_id = callback_query.from_user.id
-        cart_items = get_cart_items(user_id)
+        # cart_items = get_cart_items(user_id)
+        #
+        # total_price = sum(item["product"][2] * item["quantity"] for item in cart_items)
+        # if total_price < 4500:
+        #     keyboard = types.InlineKeyboardMarkup()
+        #     clear_button = types.InlineKeyboardButton(
+        #         "Очистить корзину", callback_data="clear_cart"
+        #     )
+        #     keyboard.add(clear_button)
+        #     await bot.send_message(
+        #         user_id,
+        #         f"Самый умный ?! Минимальная сумма заказа: 4500руб. Ваш заказ: {total_price}руб.",
+        #         reply_markup=keyboard,
+        #     )
+        #     return
+        # await callback_query.answer()
 
-        total_price = sum(item["product"][2] * item["quantity"] for item in cart_items)
-        if total_price < 4500:
-            keyboard = types.InlineKeyboardMarkup()
-            clear_button = types.InlineKeyboardButton(
-                "Очистить корзину", callback_data="clear_cart"
-            )
-            keyboard.add(clear_button)
-            await bot.send_message(
-                user_id,
-                f"Самый умный ?! Минимальная сумма заказа: 4500руб. Ваш заказ: {total_price}руб.",
-                reply_markup=keyboard,
-            )
-            return
-        await callback_query.answer()
+        if money_value > 0:
+            # Если значение money больше 0, показываем инлайн-кнопки.
+            await state.update_data(money_value=money_value)  # Сохраняем money_value в состоянии.
+
+            keyboard = InlineKeyboardMarkup()
+            yes_button = InlineKeyboardButton("Да", callback_data="use_money_yes")
+            no_button = InlineKeyboardButton("Нет", callback_data="use_money_no")
+            keyboard.add(yes_button, no_button)
+
+            await callback_query.message.answer(f"У вас есть деньги на счету ({money_value}). Желаете использовать их?",
+                                                reply_markup=keyboard)
+            await OrderForm.WAIT_FOR_MONEY.set()  # Переходим на новое состояние.
+        else:
+
+            await OrderForm.FIO.set()
+            await bot.send_message(callback_query.from_user.id, "Введите ваше ФИО:")
+
+
+@dp.callback_query_handler(lambda c: c.data == "buy600")
+async def buy_product(callback_query: types.CallbackQuery, state: FSMContext):
+    user_id = callback_query.from_user.id
+    money_value = await get_money_value_from_db(user_id)
+    global technical_works
+    if not technical_works:
+        await callback_query.answer("⚠️В магазине ведутся тех работы⚠️")
+    else:
+        user_id = callback_query.from_user.id
+
+        # cart_items = get_cart_items(user_id)
+        # total_price = sum(item["product"][2] * item["quantity"] for item in cart_items)
 
         if money_value > 0:
             # Если значение money больше 0, показываем инлайн-кнопки.
@@ -323,6 +363,19 @@ async def process_money_response(callback_query: CallbackQuery, state: FSMContex
 
         await OrderForm.FIO.set()
         await callback_query.message.answer("Введите ваше ФИО:")
+
+
+@dp.message_handler(commands=["reset"], state="*")
+async def reset_state(message: types.Message, state: FSMContext):
+    if message.chat.type != types.ChatType.PRIVATE:
+        return
+    await state.reset_state()
+    user_id = message.from_user.id
+    # clear_user_cart(user_id)
+    await message.answer("Оформление заказа отменено!\n"
+                         " -Все товары в корзине сохранены\n"
+                         " -Вы можете продолжить работу с корзиной\n"
+                         " -Вы можете начать новый заказ очистив корзину\n")
 
 
 @dp.message_handler(state=OrderForm.FIO)
@@ -375,6 +428,7 @@ async def process_house(message: types.Message, state: FSMContext):
         data["house"] = message.text
 
     delivery_methods = [
+        # {"name": "Santa Claus delivery", "price": 1},
         {"name": "Обычная", "price": 600},
         {"name": "Обычная + страховка", "price": 700},
         {"name": "Экспресс", "price": 1200},
@@ -414,15 +468,6 @@ async def select_delivery_method(callback_query: CallbackQuery, state: FSMContex
         callback_query.from_user.id, "У вас есть купон?", reply_markup=keyboard
     )
     await OrderForm.COUPON.set()
-
-
-@dp.message_handler(commands=["reset"], state="*")
-@aut_cgt()
-async def reset_state(message: types.Message, state: FSMContext):
-    await state.reset_state()
-    user_id = message.from_user.id
-    clear_user_cart(user_id)
-    await message.answer("Заказ сброшен. Вы можете начать новый заказ.")
 
 
 @dp.message_handler(commands=["start"])
@@ -724,6 +769,30 @@ async def del_user_z(message: types.Message):
     await check_time_order()
 
 
+@dp.message_handler(commands=['coop'], is_chat_admin=True)
+async def coop_check(message: types.Message):
+    try:
+        coop_text = message.reply_to_message.text
+        if len(coop_text) == 0:
+            results = 'Нет данных для поиска'
+        else:
+            results = find_and_check_coupons(coop_text)
+        await message.answer(results, parse_mode='markdown')
+    except Exception:
+        await message.answer('Ответом на сообщение с купонами')
+
+
+@dp.message_handler(content_types=types.ContentType.PHOTO)
+@auth
+async def handle_photo(message: types.Message):
+    if message.chat.type == types.ChatType.PRIVATE:
+        photo = message.photo[-1]  # Берем последнюю (самую большую) фотографию из списка
+        await save_photo(photo)
+        await bot.send_message(message.from_user.id, 'Фото загружено, можно начать рассылку!')
+    else:
+        print('ктото хотел сунуть фОТО В НЕ ПРИВАТА ')
+
+
 dp.register_callback_query_handler(process_coupon_inline_callback, lambda query: query.data.startswith("coupon_"),
                                    state=OrderForm.COUPON)
 
@@ -752,4 +821,4 @@ if __name__ == "__main__":
     # check_exists_db.create_database_and_tables()
     # check_exists_db.check_database_and_tables()
     '''----------------------------------------'''
-    executor.start_polling(dp, skip_updates=True)
+    executor.start_polling(dp, skip_updates=True, on_startup=on_startup)

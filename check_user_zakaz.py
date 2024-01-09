@@ -38,7 +38,7 @@ async def delete_user_zakaz(message: types.Message):
     chat_id, message_id = args
 
     try:
-        await bot.delete_message(chat_id, message_id)
+        await bot.edit_message_text('❌❌❌ ЗАКАЗ УДАЛЕН ❌❌❌', chat_id, message_id)
         print(f"Сообщение в чате {chat_id}, с идентификатором {message_id} успешно удалено.")
         await message.answer('Заказ удален')
     except Exception as e:

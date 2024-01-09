@@ -15,6 +15,7 @@ from delivery_method import mode_of_delivery
 from connect_bd import connect_data_b
 
 from order_cleaner import non_pay_orders
+from cart_utils import add_delivery_cost, calculate_delivery_cost
 
 
 def get_dt():
@@ -24,24 +25,9 @@ def get_dt():
     return format_dt
 
 
-async def calculate_delivery_cost(product_price, delivery_cost):
-    delivery_increase = (product_price - 5000) // 5000
-
-    if delivery_increase > 0:
-        increased_cost = delivery_increase * 100
-        delivery_cost += increased_cost
-        info_delivery = (f"Стоимость доставки увеличилась на: {increased_cost} руб.\n"
-                         f"Итоговая стоимость доставки: {delivery_cost} руб.\n\n")
-    else:
-        increased_cost = 0
-        info_delivery = ''
-
-    return delivery_cost, increased_cost, info_delivery
-
-
 async def order_informer(random_number_order, total_price1, delivery, coupon, order_user, user_id, sent_chat_id,
                          sent_message_id):
-    # await non_pay_orders(sent_message_id, sent_chat_id, random_number_order) #TODO разкоментировать после тестов
+    # await non_pay_orders(sent_message_id, sent_chat_id, random_number_order) #TODO раскомментировать после тестов
     await bot.send_message(-1001683359105, f"Оформлен заказ №{random_number_order}\n"
                                            f"Сумма к оплате: {total_price1} руб.\n"
                                            f"Отправка: {delivery}\n"
@@ -117,6 +103,7 @@ async def process_enter_coupon(message: types.Message, state: FSMContext):
         # Блок расчета корзины только в случае успешного применения купона
         delivery_options = {
             "Экспресс": 1200,
+            "Santa Claus delivery": 1,
             "Экспресс + страховка": 1300,
             "Обычная": 600,
             "Обычная + страховка": 700,
@@ -132,11 +119,15 @@ async def process_enter_coupon(message: types.Message, state: FSMContext):
         cart_text += (
             f"\nПодытог: {total_price} руб. + {delivery} >> Итого = {total_price1} руб."
         )
-        total_cost, increased_delivery, info_delivery = await calculate_delivery_cost(total_price, delivery_value)
+        total_cost, increased_delivery, info_delivery = await calculate_delivery_cost(total_price,
+                                                                                      delivery_value)  # для заказа >10000руб
 
         total_amount1 = total_amount + delivery_value
 
-        primstoim = increased_delivery + total_amount1
+        add_cost_delivery_i, add_total_price_delivery = await add_delivery_cost(total_price,
+                                                                                delivery_value)  # для заказа <4500руб
+
+        primstoim = increased_delivery + total_amount1 + add_total_price_delivery
 
         cart_data = calc_money_cart(money_value, primstoim, user_id)
         primstoim -= money_value
@@ -164,9 +155,9 @@ async def process_enter_coupon(message: types.Message, state: FSMContext):
             f"Процент скидки: {discount_percentage} %\n"
             f"Сумма скидки: {discount_amount} руб.\n"
             f"После применения купона : {total_amount} руб.\n\n"
+
+            f"{add_cost_delivery_i}\n"
             f"{cart_data}\n"
-            # f"Стоимость доставки увеличилась на: {increased_delivery} руб.\n"
-            # f"Итоговая стоимость доставки: {total_cost} руб.\n\n"
 
             "Реквизиты для оплаты:\n"
             "--------------------------------------------\n"
@@ -181,7 +172,7 @@ async def process_enter_coupon(message: types.Message, state: FSMContext):
         sent_message_id = msg.message_id
         print(f'/del_zakaz {msg.chat.id} {msg.message_id}')
         await non_pay_orders(sent_message_id, sent_chat_id, random_number_order)
-        # await order_informer(random_number_order, total_price1, delivery, coupon, order_user, user_id, sent_chat_id,
+        # await order_informer(random_number_order, primstoim, delivery, coupon, order_user, user_id, sent_chat_id,
         #                      sent_message_id)
     await state.finish()
 
@@ -231,14 +222,15 @@ async def process_coupon_inline_callback(query: types.CallbackQuery, state: FSMC
                 total_price1 = int(total_price1)  # Округляем до целого числа
                 cart_text += f"\nПодытог: {int(total_price)} руб. + {delivery} >> Итого = {total_price1} руб."
 
+            add_cost_delivery_i, add_total_price_delivery = await add_delivery_cost(total_price, delivery_value)
+
             random_number = random.choice(numbers_cards)
             digits = random_number[:19]
             remaining_text = random_number[20:]
 
             total_cost, increased_delivery, info_delivery = await calculate_delivery_cost(int(total_price),
                                                                                           int(delivery_value))
-
-            final_price = increased_delivery + total_price1
+            final_price = increased_delivery + total_price1 + add_total_price_delivery
 
             cart_data = calc_money_cart(money_value, final_price, user_id)
             final_price -= money_value
@@ -257,8 +249,9 @@ async def process_coupon_inline_callback(query: types.CallbackQuery, state: FSMC
                 f"Улица: {data['street']}\n"
                 f"Номер дома и квартиры: {data['house']}\n"
                 "\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\n\n"
-                # f"Стоимость доставки увеличилась на: {increased_delivery} руб.\n"
-                # f"Итоговая стоимость доставки: {total_cost} руб.\n\n"
+
+                f"{add_cost_delivery_i}\n"
+
                 f"{info_delivery}"
                 f"{cart_data}\n\n"
                 f"Реквизиты для оплаты:\n"
@@ -273,6 +266,6 @@ async def process_coupon_inline_callback(query: types.CallbackQuery, state: FSMC
             sent_message_id = sent_message.message_id
             print(f'/del_zakaz {sent_message.chat.id} {sent_message.message_id}')
             await non_pay_orders(sent_message_id, sent_chat_id, random_number_order)
-            # await order_informer(random_number_order, total_price1, delivery, coupon, order_user, user_id, sent_chat_id,
+            # await order_informer(random_number_order, final_price, delivery, coupon, order_user, user_id, sent_chat_id,
             #                      sent_message_id)
         await state.finish()

@@ -202,17 +202,17 @@ async def zarik_money(message: types.Message, money, user_id, game_info, full_na
         cursor.execute("UPDATE users SET money = money + %s WHERE user_id = %s", (money, user_id,))
 
         # Асинхронно отправляем сообщение и устанавливаем таймер на его удаление
-        asyncio.create_task(send_and_delete_message(message,
-                                                    f"{game_info}\n\n*{full_name}* Вы проиграли!\n\nВам начислены коины:"
-                                                    f" {game_over}\n\nНе забудьте делиться с другими участниками монетами: "
-                                                    f"ответом на сообщение пользователя"
-                                                    f" `/send {game_over}`\n\nВсего бросков: "
-                                                    f"{all_count}\nВыигрышных бросков: {win_count}",
-                                                    29))
+        _ = asyncio.create_task(send_and_delete_message(message,
+                                                        f"{game_info}\n\n*{full_name}* Вы проиграли!\n\nВам начислены коины:"
+                                                        f" {game_over}\n\nНе забудьте делиться с другими участниками монетами: "
+                                                        f"ответом на сообщение пользователя"
+                                                        f" `/send {game_over}`\n\nВсего бросков: "
+                                                        f"{all_count}\nВыигрышных бросков: {win_count}",
+                                                        29))
     else:
-        asyncio.create_task(send_and_delete_message(message,
-                                                    'Вы не найдены в базе магазина, коины не будут начислены,'
-                                                    ' примите правила магазина! *@KRAFT_STORE_BOT*', 30))
+        _ = asyncio.create_task(send_and_delete_message(message,
+                                                        'Вы не найдены в базе магазина, коины не будут начислены,'
+                                                        ' примите правила магазина! *@KRAFT_STORE_BOT*', 30))
 
     cursor.close()
     connection.close()
@@ -224,9 +224,9 @@ async def dice_info(message: types.Message):
     param = message.get_args()
     await message.delete()
     if param == 'list':
-        asyncio.create_task(dice_rol_list(message))
+        _ = asyncio.create_task(dice_rol_list(message))
     elif param == "win":
-        asyncio.create_task(dice_rol_list_win(message))
+        _ = asyncio.create_task(dice_rol_list_win(message))
     else:
         msg = await message.answer("Работает только с параметрами `win/list` `/dice_info list`", parse_mode='markdown')
 

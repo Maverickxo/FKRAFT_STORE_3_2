@@ -15,4 +15,8 @@ def mode_of_delivery(delivery_method):
         delivery_value = 700
         delivery = "Обычная + ✅страховка✅: 700р."
 
+    elif delivery_method == "Santa Claus delivery":
+        delivery_value = 1
+        delivery = "Santa Claus delivery: 1р."
+
     return delivery_value, delivery

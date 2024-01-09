@@ -1,6 +1,37 @@
 carts = {}
 
 
+async def add_delivery_cost(total_price, delivery_value):
+    if total_price < 4500:
+        add_total_p = 600
+        delivery_cost = delivery_value + 600
+        add_cost_dely = (f"❗️Сумма минимального заказа меньше 4500р.❗️\n"
+                         f"❗️Стоимость доставки увеличена на 600р.❗️\n\n"
+                         f"Итоговая стоимость доставки: {delivery_cost} руб.\n\n")
+
+    else:
+        add_cost_dely = ''
+        add_total_p = 0
+
+    return add_cost_dely, add_total_p
+
+
+async def calculate_delivery_cost(product_price, delivery_cost):
+    # delivery_increase = 0  # TODO отключить 1 января
+
+    delivery_increase = (product_price - 5000) // 5000
+    if delivery_increase > 0:
+        increased_cost = delivery_increase * 100
+        delivery_cost += increased_cost
+        info_delivery = (f"Стоимость доставки увеличилась на: {increased_cost} руб.\n"
+                         f"Итоговая стоимость доставки: {delivery_cost} руб.\n\n")
+    else:
+        increased_cost = 0
+        info_delivery = ''
+
+    return delivery_cost, increased_cost, info_delivery
+
+
 def add_to_cart(user_id, product):
     if user_id not in carts:
         carts[user_id] = []

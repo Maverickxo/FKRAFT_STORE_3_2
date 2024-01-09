@@ -10,14 +10,16 @@ async def dice_rol_list_win(message: types.Message):
     connection, cursor = connect_data_b()
     users_data = ""
     count = 0
+    all_coop = 0
     cursor.execute(
         'SELECT count_dice, full_name, count_win FROM dice_rolls WHERE count_win > 0 ORDER BY count_win DESC')
     result = cursor.fetchall()
     for user in result:
         count += 1
+        all_coop += user[2]  # всего купонов
         users_data += f"{count}.{user[1]} - {user[2]}|{user[0]} побед|бросков\n"
     print(f'Всего получило купоны: {count}\n\n{users_data}')
-    msg = await message.answer(f'Всего получило купоны: {count}\n\n{users_data}')
+    msg = await message.answer(f'Всего получило купоны: {count}\n\n{users_data}\nКупонов получено: {all_coop}')
     result.clear()
     cursor.close()
     connection.close()
