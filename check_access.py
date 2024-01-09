@@ -7,6 +7,8 @@ BAN_MSG = """
 Извините, вы были заблокированы!\nОбратитесь к админам для получения информации.
 """
 
+alladmin_ids = [5869013585, 5967935518, 1444325514, 5633493512, 490208520]
+
 
 def check_ban_status(func):
     async def wrapper(message: types.Message, *args, **kwargs):
@@ -20,10 +22,8 @@ def check_ban_status(func):
 
 
 def auth(func):
-    allowed_ids = [5869013585, 5967935518, 1444325514, 5633493512]
-
     async def wrapper(message):
-        if message['from']['id'] not in allowed_ids:
+        if message['from']['id'] not in alladmin_ids:
             return await message.reply("Доступ запрещен", reply=False)
         return await func(message)
 
@@ -41,5 +41,3 @@ def aut_cgt():
         return wrapper
 
     return decorator
-
-

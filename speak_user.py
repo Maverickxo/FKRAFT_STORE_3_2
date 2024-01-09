@@ -1,5 +1,4 @@
-import datetime
-
+from date_time_online import online_date_time
 from aiogram import types
 from users_storage_db import Database
 import aiogram.utils.exceptions
@@ -52,8 +51,8 @@ async def save_photo(photo: types.PhotoSize):
 
 
 async def send_message_text(message: types.Message):
-    await bot.send_message(message.from_user.id, message.chat.id, 'Старт рассылки')
-    _time = datetime.datetime.now().strftime("%d/%m/%Y, %H:%M:%S")
+    await message.answer('Старт рассылки')
+    _time = online_date_time()
     users = db.get_users()
     message_count = 0
     for row in users:
@@ -73,16 +72,16 @@ async def send_message_text(message: types.Message):
         except aiogram.utils.exceptions.RetryAfter as e:
             await message.answer(f"Ожидание {e.timeout} секунд")
             time.sleep(e.timeout)
-    _time2 = datetime.datetime.now().strftime("%d/%m/%Y, %H:%M:%S")
+    _time2 = online_date_time()
     await message.answer(f"Рассылка окончена.\n"
                          f"Отправлено сообщений: {message_count}\n"
-                         f"Начало:{_time}\n"
-                         f"Окончание: {_time2}")
+                         f"Начало: {_time}MSK\n"
+                         f"Окончание: {_time2}MSK")
 
 
 async def send_message_photo_caption(photo, message: types.Message):
-    await bot.send_message(message.from_user.id, message.chat.id, 'Старт рассылки')
-    _time = datetime.datetime.now().strftime("%d/%m/%Y, %H:%M:%S")
+    await message.answer('Старт рассылки')
+    _time = online_date_time()
     users = db.get_users()
     message_count = 0
     for row in users:
@@ -105,11 +104,11 @@ async def send_message_photo_caption(photo, message: types.Message):
             await message.answer(f"Ожидание {e.timeout} секунд")
             time.sleep(e.timeout)
 
-    _time2 = datetime.datetime.now().strftime("%d/%m/%Y, %H:%M:%S")
+    _time2 = online_date_time()
     await message.answer(f"Рассылка окончена.\n"
                          f"Отправлено сообщений: {message_count}\n"
-                         f"Начало:{_time}\n"
-                         f"Окончание: {_time2}")
+                         f"Начало: {_time}MSK\n"
+                         f"Окончание: {_time2}MSK")
     os.remove(f'img/send_img.jpg')
 
 
@@ -129,3 +128,11 @@ async def speak_user(message: types.Message):
     else:
         print(f"Файл '{file_name}' не найден в папке 'img'")
         _ = asyncio.create_task(send_message_text(message))
+
+
+async def speakclear(message: types.Message):
+    try:
+        os.remove(f'img/send_img.jpg')
+        await message.answer("Медиа для рассылки удалено!")
+    except Exception:
+        await message.answer("Медиа отсутствует")

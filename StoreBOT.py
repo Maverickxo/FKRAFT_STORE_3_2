@@ -36,7 +36,6 @@ from status_bot import on_startup
 from new_users_chat import new_chat_users, lv_chat_users
 from order_cleaner import check_time_order
 
-
 bot = Bot(token=config.TOKEN)
 dp = Dispatcher(bot, storage=MemoryStorage())
 user_db = Database()
@@ -531,7 +530,12 @@ async def rules(call: types.CallbackQuery):
 @auth
 async def speak(message: types.Message):
     # await speak_user(message)
-    asyncio.create_task(speak_user(message))
+    if message.chat.type != types.ChatType.PRIVATE:
+        _ = asyncio.create_task(speak_user(message))
+    else:
+        await bot.send_message(message.chat.id, "❗️Рассылка доступна только через чат ADM❗️\n"
+                                                "чтобы прикрепить фото к рассылке\n"
+                                                "перетащите его сюда перед рассылкой")
 
 
 @dp.message_handler(commands=["users_count"])
@@ -782,15 +786,19 @@ async def coop_check(message: types.Message):
         await message.answer('Ответом на сообщение с купонами')
 
 
+@dp.message_handler(commands=['speakcl'], is_chat_admin=True)
+async def speak_clear(message: types.Message):
+    await speakclear(message)
+
+
 @dp.message_handler(content_types=types.ContentType.PHOTO)
-@auth
 async def handle_photo(message: types.Message):
-    if message.chat.type == types.ChatType.PRIVATE:
+    if message.chat.type == types.ChatType.PRIVATE and message.from_user.id in alladmin_ids:
         photo = message.photo[-1]  # Берем последнюю (самую большую) фотографию из списка
         await save_photo(photo)
         await bot.send_message(message.from_user.id, 'Фото загружено, можно начать рассылку!')
     else:
-        print('ктото хотел сунуть фОТО В НЕ ПРИВАТА ')
+        print('ктото не админ пытался сунуть фото вне привата')
 
 
 dp.register_callback_query_handler(process_coupon_inline_callback, lambda query: query.data.startswith("coupon_"),

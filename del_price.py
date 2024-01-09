@@ -28,6 +28,7 @@ async def del_price(message: types.Message):  # TODO Готов
     cursor.close()
     connection.close()
 
+
 # Обработчик команды /del
 async def delete_product(message: types.Message):  # TODO готов
     connection, cursor = connect_data_b()
