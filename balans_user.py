@@ -1,10 +1,11 @@
-from aiogram import types
-
+from aiogram import types, Bot
 from users_storage_db import Database
 import asyncio
 from connect_bd import connect_data_b
 import psycopg2
+from config import TOKEN
 
+bot = Bot(token=TOKEN)
 db = Database()
 
 
@@ -140,8 +141,11 @@ async def add_deposit(message: types.Message):  # TODO готов
     connection.close()
 
     user_name = message.reply_to_message.from_user.full_name
-
+    user_name_admin = message.from_user.full_name
     msg = await message.reply(f"Вы начислили {amount} KRAFT coins пользователю {user_name}")
+
+    await bot.send_message(chat_id=5869013585, text=f"Использование команды deposit\n"
+                                                    f"{user_name_admin} - {amount}р.")
     await message.delete()
     await asyncio.sleep(5)
     await msg.delete()

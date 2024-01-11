@@ -5,6 +5,7 @@ from aiogram import types
 from StoreBOT import bot
 from connect_bd import connect_data_b
 from dice_rol_info import dice_rol_list, dice_rol_list_win
+import aiogram.utils.exceptions
 
 users = []
 
@@ -106,6 +107,7 @@ async def can_throw_dice(user_id):  # TODO Готоы
 async def get_user_coupons(message: types.Message):  # TODO Готоы
     connection, cursor = connect_data_b()
     user_id = message.from_user.id
+    user_name = message.from_user.full_name
 
     cursor.execute("SELECT * FROM coupons WHERE discount_percentage = 5 ORDER BY RANDOM() LIMIT 5")
     results_5_percent = cursor.fetchall()
@@ -122,9 +124,12 @@ async def get_user_coupons(message: types.Message):  # TODO Готоы
         for coupon in random_coupons:
             coupon_code = coupon[1]
             response += f"Код купона: `{coupon_code}`\n"
-        await bot.send_message(user_id, response + '*\nКоманда для проверки купона: /ck_coupon\n*'
-                               , parse_mode='markdown')
-
+        try:
+            await bot.send_message(user_id, response + '*\nКоманда для проверки купона: /ck_coupon\n*'
+                                   , parse_mode='markdown')
+        except aiogram.utils.exceptions.BotBlocked:
+            await bot.send_message(-1001205041376, f'{user_name} купон не отправлен, '
+                                                   f'так как у вас заблокирована личка с ботом')
     else:
         await message.answer("Нет доступных купонов")
     cursor.close()
