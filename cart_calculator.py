@@ -5,11 +5,44 @@ from allert_info import *
 from add_price import *
 from change_price import *
 from change_status import *
-import datetime
+
+from aiogram import types
+
 from user_money_to_cart import calc_money_cart
+from datetime import datetime, timedelta
+
+from delivery_method import mode_of_delivery
 
 conn = sqlite3.connect("ShopDB.db")
 cursor = conn.cursor()
+
+
+def get_dt():
+    current_dt = datetime.now()
+    new_dt = current_dt + timedelta(hours=3)
+    format_dt = new_dt.strftime("%d-%m-%Y %H:%M:%S")
+    return format_dt
+
+
+async def calculate_delivery_cost(product_price, delivery_cost):
+    delivery_increase = (product_price - 5000) // 5000
+
+    if delivery_increase > 0:
+        increased_cost = delivery_increase * 100
+        delivery_cost += increased_cost
+    else:
+        increased_cost = 0
+
+    return delivery_cost, increased_cost
+
+
+async def order_informer(random_number_order, total_price1, delivery, coupon, order_user, user_id):
+    await bot.send_message(-1001683359105, f"Оформлен заказ №{random_number_order}\n"
+                                           f"Сумма к оплате: {total_price1} руб.\n"
+                                           f"Отправка: {delivery}\n"
+                                           f"Купон: {coupon}\n\n"
+                                           f"Клиент: {order_user} `/ban {user_id}`", parse_mode='markdown')
+
 
 
 class OrderForm(StatesGroup):
@@ -17,10 +50,10 @@ class OrderForm(StatesGroup):
 
 
 async def process_enter_coupon(message: types.Message, state: FSMContext):
+    order_user = message.from_user.full_name
     coupon = message.text
     chat_id = message.chat.id
-    current_datetime = datetime.datetime.now()
-    formatted_datetime = current_datetime.strftime("%Y-%m-%d %H:%M:%S")
+    formatted_datetime = get_dt()
     async with state.proxy() as data:
         money_value = data.get("money_value", 0)  # Получаем значение money_value из данных состояния.
         delivery_method = data["delivery_method"]
@@ -46,8 +79,6 @@ async def process_enter_coupon(message: types.Message, state: FSMContext):
 
                 discount_amount = int(total_price * (discount_percentage / 100))
                 total_amount = int(total_price - discount_amount)
-                # discount_amount = int(discount_amount)#
-                # total_amount = int(total_amount)#
 
                 if result[3] == 0:
                     cursor.execute("DELETE FROM coupons WHERE coupon_code = ?", (coupon,))
@@ -85,70 +116,67 @@ async def process_enter_coupon(message: types.Message, state: FSMContext):
         if delivery:
             delivery_value = delivery_options[delivery_method]
 
+            delivery_value, delivery = mode_of_delivery(delivery_method)
+
         total_price1 = total_price + delivery_value
-
-        if delivery_method == "Экспресс":
-            delivery = "‼️Экспресс: 1200р.‼️"
-            delivery_value = 1200
-
-        elif delivery_method == "Экспресс + страховка":
-            delivery = "‼️Экспресс + ✅страховка✅: 1300р.‼️"
-            delivery_value = 1300
-
-        elif delivery_method == "Обычная":
-            delivery_value = 600
-            delivery = "Обычная: 600р."
-
-        elif delivery_method == "Обычная + страховка":
-            delivery_value = 700
-            delivery = "Обычная + ✅страховка✅: 700р."
 
         cart_text += (
             f"\nПодытог: {total_price} руб. + {delivery} >> Итого = {total_price1} руб."
         )
+        total_cost, increased_delivery = await calculate_delivery_cost(total_price, delivery_value)
 
         total_amount1 = total_amount + delivery_value
 
-        cart_data = calc_money_cart(money_value, total_amount1, user_id)
-        total_amount1 -= money_value
+        primstoim = increased_delivery + total_amount1
+
+        cart_data = calc_money_cart(money_value, primstoim, user_id)
+        primstoim -= money_value
 
         random_number = random.choice(numbers_cards)
-        if total_amount1 <= 0:
-            total_amount1 = "❗️ОПЛАЧЕНО❗️"
+        digits = random_number[:19]
+        remaining_text = random_number[20:]
+
+        if primstoim <= 0:
+            primstoim = "❗️ОПЛАЧЕНО❗️"
         await bot.send_message(
             user_id,
             f"{cart_text}\n\n"
             "Информация о заказе:\n"
-            "********************\n"
-            f"Дата заказа: {formatted_datetime}\n"
+            "\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\n"
+            f"Дата заказа: {formatted_datetime}(MSK)\n"
             f"ФИО: {data['fio']}\n"
             f"Индекс: {data['index']}\n"
             f"Город: {data['city']}\n"
             f"Улица: {data['street']}\n"
             f"Номер дома и квартиры: {data['house']}\n"
-            "********************\n\n"
-            f"После применения купона : {total_amount} руб.\n"
-            f"Сумма скидки: {discount_amount} руб.\n"
+            "\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\n\n"
+            f"Купон: {coupon}\n"
             f"Процент скидки: {discount_percentage} %.\n"
-            f"Купон: {coupon}\n\n"
+            f"Сумма скидки: {discount_amount} руб.\n"
+            f"После применения купона : {total_amount} руб.\n\n"
+
             f"{cart_data}\n"
+
+            f"Стоимость доставки увеличилась на: {increased_delivery} руб.\n"
+            f"Итоговая стоимость доставки: {total_cost} руб.\n\n"
+
             "Реквизиты для оплаты:\n"
             "--------------------------------------------\n"
-            f"{random_number}\n"
+            f"`{digits}` {remaining_text}\n"
             "--------------------------------------------\n"
-            f"Сумма к оплате: {total_amount1} руб.\n",
-        )
+            f"Сумма к оплате: {primstoim} руб.\n", parse_mode='markdown')
+
+        coupon = f"{coupon} - {discount_percentage}%"
         await alert_hd(message)
         clear_user_cart(user_id)
-        # await bot.send_message(-1001683359105, f"Оформлен заказ №{random_number_order}\n"
-        #                                        f"Сумма к оплате: {total_price1} руб.\n"
-        #                                        f"Отправка:{delivery}")
+
+        # await order_informer(random_number_order, primstoim, delivery, coupon, order_user)
     await state.finish()
 
 
 async def process_coupon_inline_callback(query: types.CallbackQuery, state: FSMContext):
-    current_datetime = datetime.datetime.now()
-    formatted_datetime = current_datetime.strftime("%Y-%m-%d %H:%M:%S")
+    order_user = query.from_user.full_name
+    formatted_datetime = get_dt()
     chat_id = query.message.chat.id
     callback_data = query.data
     if callback_data == "coupon_yes":
@@ -159,6 +187,7 @@ async def process_coupon_inline_callback(query: types.CallbackQuery, state: FSMC
         async with state.proxy() as data:
             money_value = data.get("money_value", 0)  # Получаем значение money_value из данных состояния.
             delivery_method = data["delivery_method"]
+
         async with state.proxy() as data:
             user_id = query.from_user.id
             random_number_order = random.randint(100000, 999999)
@@ -174,63 +203,58 @@ async def process_coupon_inline_callback(query: types.CallbackQuery, state: FSMC
                 total_price1 = total_price
                 delivery_value = 0
 
-            if delivery_method == "Экспресс":
-                delivery = "‼️Экспресс: 1200р.‼️"
-                delivery_value = 1200
+                delivery_value, delivery = mode_of_delivery(delivery_method)
 
-            elif delivery_method == "Экспресс + страховка":
-                delivery = "‼️Экспресс + ✅страховка✅: 1300р.‼️"
-                delivery_value = 1300
-
-            elif delivery_method == "Обычная":
-                delivery_value = 600
-                delivery = "Обычная: 600р."
-
-            elif delivery_method == "Обычная + страховка":
-                delivery_value = 700
-                delivery = "Обычная + ✅страховка✅: 700р."
+            #
 
             if total_price >= 130000:
                 discount = total_price * 0.15
                 total_price -= discount
                 total_price1 = delivery_value + total_price
-
-                cart_text += f"\nПодытог: {total_price} руб. (со скидкой на опт) + {delivery} >> Итого = {total_price1} руб."
+                total_price1 = int(total_price1)  # Округляем до целого числа
+                cart_text += f"\nПодытог: {int(total_price)} руб. (со скидкой на опт) + {delivery} >> Итого = {total_price1} руб."
             else:
                 total_price1 = delivery_value + total_price
-
-                cart_text += f"\nПодытог: {total_price} руб. + {delivery} >> Итого = {total_price1} руб."
+                total_price1 = int(total_price1)  # Округляем до целого числа
+                cart_text += f"\nПодытог: {int(total_price)} руб. + {delivery} >> Итого = {total_price1} руб."
 
             random_number = random.choice(numbers_cards)
+            digits = random_number[:19]
+            remaining_text = random_number[20:]
 
-            cart_data = calc_money_cart(money_value, total_price1, user_id)
-            total_price1 -= money_value
+            total_cost, increased_delivery = await calculate_delivery_cost(int(total_price), int(delivery_value))
 
-            if total_price1 <= 0:
-                total_price1 = "❗️ОПЛАЧЕНО❗️"
+            final_price = increased_delivery + total_price1
+
+            cart_data = calc_money_cart(money_value, final_price, user_id)
+            final_price -= money_value
+
+            if final_price <= 0:
+                final_price = "❗️ОПЛАЧЕНО❗️"
             await bot.send_message(
                 user_id,
                 f"{cart_text}\n\n"
                 f"Информация о заказе:\n"
-                "********************\n"
-                f"Дата заказа: {formatted_datetime}\n"
+                "\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\n"
+                f"Дата заказа: {formatted_datetime}(MSK)\n"
                 f"ФИО: {data['fio']}\n"
                 f"Индекс: {data['index']}\n"
                 f"Город: {data['city']}\n"
                 f"Улица: {data['street']}\n"
                 f"Номер дома и квартиры: {data['house']}\n"
-                "********************\n\n"
-                f"{cart_data}\n"
+                "\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\n\n"
+
+                f"Стоимость доставки увеличилась на: {increased_delivery} руб.\n"
+                f"Итоговая стоимость доставки: {total_cost} руб.\n\n"
+
+                f"{cart_data}\n\n"
                 f"Реквизиты для оплаты:\n"
                 "--------------------------------------------\n"
-                f"{random_number}\n"
+                f"`{digits}` {remaining_text}\n"
                 "--------------------------------------------\n"
-                f"Сумма к оплате: {total_price1} руб.\n",
-            )
-
+                f"Сумма к оплате: {final_price} руб.\n", parse_mode='markdown')
+            coupon = "Без купона"
             await alert_hd(query.message)
             clear_user_cart(user_id)
-            # await bot.send_message(-1001683359105, f"Оформлен заказ №{random_number_order}\n"
-            #                                        f"Сумма к оплате: {total_price1} руб.\n"
-            #                                        f"Отправка:{delivery}")
+            # await order_informer(random_number_order, final_price, delivery, coupon, order_user)
         await state.finish()

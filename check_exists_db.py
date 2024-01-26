@@ -29,6 +29,15 @@
 #                         PRIMARY KEY("id" AUTOINCREMENT)
 #                     )''')
 #
+#         conn.execute('''CREATE TABLE IF NOT EXISTS dice_rolls(
+#                           user_id INTEGER PRIMARY KEY,
+#                           last_roll_date TEXT,
+#                           "user_name"	TEXT,
+#                           "full_name"	TEXT
+#                           )''')
+
+
+
 #         print("База данных |ShopDB.db| таблицы и поля успешно созданы:")
 #     except sqlite3.Error as e:
 #         print("Ошибка:", e)

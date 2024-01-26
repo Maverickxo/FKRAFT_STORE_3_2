@@ -10,7 +10,7 @@ db = Database('ShopDB.db')
 
 async def speak_user(message: types.Message):
     if not message.get_args():
-        await message.answer("Введите текст для рассылки `/speak Приветствую тебя!`", parse_mode='markdown')
+        await message.answer("Введите текст для рассылки `/speak_store Приветствую тебя!`", parse_mode='markdown')
         return
     users = db.get_users()
     message_count = 0
